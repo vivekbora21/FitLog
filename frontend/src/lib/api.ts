@@ -1,0 +1,292 @@
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+class ApiClient {
+  private token: string | null = null;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.token = localStorage.getItem('fitlog_access_token');
+    }
+  }
+
+  setToken(token: string | null) {
+    this.token = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('fitlog_access_token', token);
+      } else {
+        localStorage.removeItem('fitlog_access_token');
+      }
+    }
+  }
+
+  setRefreshToken(token: string | null) {
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('fitlog_refresh_token', token);
+      } else {
+        localStorage.removeItem('fitlog_refresh_token');
+      }
+    }
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  logout() {
+    this.setToken(null);
+    this.setRefreshToken(null);
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+    const res = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (!res.ok) {
+      let errorBody = {};
+      try {
+        errorBody = await res.json();
+      } catch (e) {
+        // Not JSON
+      }
+      const error = new Error(`API Error: ${res.status} ${res.statusText}`);
+      (error as any).response = errorBody;
+      (error as any).status = res.status;
+      throw error;
+    }
+
+    if (res.status === 204) {
+      return {} as T;
+    }
+
+    return res.json();
+  }
+
+  // Auth
+  async login(email: string, password: string) {
+    const data = await this.request<{ access: string; refresh: string }>('/auth/login/', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    this.setToken(data.access);
+    this.setRefreshToken(data.refresh);
+    return data;
+  }
+
+  async register(payload: { email: string; password: string; first_name: string; last_name: string }) {
+    const data = await this.request<{ user: any; tokens: { access: string; refresh: string } }>('/auth/register/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    this.setToken(data.tokens.access);
+    this.setRefreshToken(data.tokens.refresh);
+    return data;
+  }
+
+  async getMe() {
+    return this.request<any>('/auth/me/');
+  }
+
+  // Gyms & Memberships
+  async getGyms() {
+    return this.request<any>('/gyms/');
+  }
+
+  async getMembers(gymId?: string) {
+    const query = gymId ? `?gym_id=${gymId}` : '';
+    return this.request<any>(`/memberships/${query}`);
+  }
+
+  async getTrainerClients(gymId?: string) {
+    const query = gymId ? `?gym_id=${gymId}` : '';
+    return this.request<any>(`/trainer-clients/${query}`);
+  }
+
+  async getInvitations(gymId: string) {
+    return this.request<any>(`/invitations/?gym_id=${gymId}`);
+  }
+
+  async createInvitation(gymId: string, email: string, role: string) {
+    return this.request<any>('/invitations/', {
+      method: 'POST',
+      body: JSON.stringify({ gym: gymId, email, role }),
+    });
+  }
+
+  // Exercises
+  async getExercises(params?: { muscle?: string; equipment?: string; search?: string; gym_id?: string }) {
+    const query = new URLSearchParams();
+    if (params?.muscle) query.append('muscle', params.muscle);
+    if (params?.equipment) query.append('equipment', params.equipment);
+    if (params?.search) query.append('search', params.search);
+    if (params?.gym_id) query.append('gym_id', params.gym_id);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return this.request<any>(`/exercises/${queryString}`);
+  }
+
+  async getMuscleGroups() {
+    return this.request<any>('/muscle-groups/');
+  }
+
+  async getEquipmentTypes() {
+    return this.request<any>('/equipment-types/');
+  }
+
+  // Workouts
+  async getWorkouts(clientId?: string) {
+    const query = clientId ? `?client_id=${clientId}` : '';
+    return this.request<any>(`/workouts/sessions/${query}`);
+  }
+
+  async getTodaysWorkout() {
+    return this.request<any>('/workouts/sessions/today/');
+  }
+
+  async getWorkoutPlan() {
+    return this.request<any>('/workouts/sessions/plan/');
+  }
+
+  async getCardio() {
+    return this.request<any>('/workouts/cardio/');
+  }
+
+  async logCardio(payload: { date: string; modality: string; duration_minutes: number; intensity?: string; heart_rate?: number }) {
+    return this.request<any>('/workouts/cardio/', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async createWorkoutSession(sessionData: any) {
+    return this.request<any>('/workouts/sessions/', {
+      method: 'POST',
+      body: JSON.stringify(sessionData),
+    });
+  }
+
+  async getRoutines() {
+    return this.request<any>('/workouts/routines/');
+  }
+
+  async createRoutine(routineData: any) {
+    return this.request<any>('/workouts/routines/', {
+      method: 'POST',
+      body: JSON.stringify(routineData),
+    });
+  }
+
+  async getAssignedWorkouts() {
+    return this.request<any>('/assigned-workouts/');
+  }
+
+  async assignWorkout(payload: { gym: string; client: string; routine: string; scheduled_date: string }) {
+    return this.request<any>('/assigned-workouts/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async postTrainerFeedback(assignedId: string, feedback: string) {
+    return this.request<any>(`/assigned-workouts/${assignedId}/feedback/`, {
+      method: 'POST',
+      body: JSON.stringify({ feedback }),
+    });
+  }
+
+  // Nutrition
+  async getNutrition(dateStr: string = 'today') {
+    return this.request<{ day: any; targets: any }>(`/nutrition/${dateStr}/`);
+  }
+
+  async addMeal(mealData: { name: string; meal_type: string; calories: number; protein_g: number; carbs_g: number; fat_g: number; date?: string }) {
+    return this.request<any>('/nutrition/meals/', {
+      method: 'POST',
+      body: JSON.stringify(mealData),
+    });
+  }
+
+  async updateWater(dateStr: string, waterMl: number) {
+    return this.request<any>(`/nutrition/${dateStr}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ water_consumed_ml: waterMl }),
+    });
+  }
+
+  // Progress
+  async getWeights(clientId?: string) {
+    const query = clientId ? `?client_id=${clientId}` : '';
+    return this.request<any>(`/progress/weight/${query}`);
+  }
+
+  async logWeight(weight_kg: number, body_fat_pct?: number, notes?: string) {
+    const today = new Date().toISOString().split('T')[0];
+    return this.request<any>('/progress/weight/', {
+      method: 'POST',
+      body: JSON.stringify({ date: today, weight_kg, body_fat_pct, notes: notes || '' }),
+    });
+  }
+
+  async getMeasurements(clientId?: string) {
+    const query = clientId ? `?client_id=${clientId}` : '';
+    return this.request<any>(`/progress/measurements/${query}`);
+  }
+
+  async logMeasurement(data: Record<string, any>) {
+    return this.request<any>('/progress/measurements/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateMeasurement(id: string, data: Record<string, any>) {
+    return this.request<any>(`/progress/measurements/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteMeasurement(id: string) {
+    return this.request<any>(`/progress/measurements/${id}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getPersonalRecords(clientId?: string) {
+    const query = clientId ? `?client_id=${clientId}` : '';
+    return this.request<any>(`/progress/prs/${query}`);
+  }
+
+  // Notifications
+  async getNotifications() {
+    return this.request<any>('/notifications/');
+  }
+
+  async markNotificationRead(id: string) {
+    return this.request<any>(`/notifications/${id}/read/`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Audit Logs
+  async getAuditLogs(gymId: string) {
+    return this.request<any>(`/audit-logs/?gym_id=${gymId}`);
+  }
+
+  // Analytics
+  async getDashboardStats() {
+    return this.request<any>('/analytics/dashboard/');
+  }
+}
+
+export const api = new ApiClient();
