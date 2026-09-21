@@ -2,8 +2,44 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Scale, Dumbbell, Flame, TrendingDown, TrendingUp, Target, ArrowRight } from 'lucide-react';
+import { Scale, Dumbbell, Flame, TrendingDown, TrendingUp, Target, ArrowRight, Ruler, Zap, ListChecks, Percent } from 'lucide-react';
 import { MetricChart, DataPoint } from './MetricChart';
+import { Card } from './ui/Card';
+import styles from './DashboardCharts.module.css';
+
+type Tone = 'slate' | 'emerald' | 'cyan' | 'amber';
+
+function StatTile({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  unit,
+  trend,
+}: {
+  icon: typeof Scale;
+  tone: Tone;
+  label: string;
+  value: React.ReactNode;
+  unit?: string;
+  trend?: 'up' | 'down';
+}) {
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : null;
+  return (
+    <Card hoverable className={styles.statTile}>
+      <div className={`${styles.statIcon} ${styles[tone]}`}>
+        <Icon size={17} />
+      </div>
+      <div className={styles.statBody}>
+        <div className={styles.statLabel}>{label}</div>
+        <div className={`${styles.statValue} ${styles[tone]}`}>
+          {TrendIcon && <TrendIcon size={14} />}
+          {value} {unit && <span className={styles.statUnit}>{unit}</span>}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export interface WeightTrendPoint {
   date: string;
@@ -38,12 +74,16 @@ interface DashboardChartsProps {
   trends?: DashboardTrends;
   targetWeight?: number;
   dailyCaloriesTarget?: number;
+  programDuration?: number;
+  modeLabel?: string;
 }
 
 export function DashboardCharts({
   trends,
   targetWeight = 74.0,
   dailyCaloriesTarget = 2160,
+  programDuration = 60,
+  modeLabel = 'Goal',
 }: DashboardChartsProps) {
   const [activeTab, setActiveTab] = useState<'weight' | 'volume' | 'nutrition'>('weight');
 
@@ -130,71 +170,20 @@ export function DashboardCharts({
   }, [nutritionPoints]);
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.25rem',
-        display: 'grid',
-        gap: '1.25rem',
-      }}
-    >
+    <Card className={styles.card}>
       {/* Top Header & Tab Controls */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          paddingBottom: '0.9rem',
-        }}
-      >
+      <div className={styles.header}>
         <div>
-          <div
-            style={{
-              fontSize: '0.7rem',
-              fontWeight: 900,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--color-primary)',
-            }}
-          >
-            Analytics & Progression
-          </div>
-          <h2 style={{ fontSize: '1.3rem', margin: '0.2rem 0 0' }}>Performance Trends</h2>
+          <div className={styles.headerEyebrow}>Analytics & Progression</div>
+          <h2 className={styles.headerTitle}>Performance Trends</h2>
         </div>
 
         {/* View Switcher Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            background: 'var(--bg-surface-elevated)',
-            padding: '3px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-subtle)',
-            gap: '3px',
-          }}
-        >
+        <div className={styles.tabList}>
           <button
             type="button"
             onClick={() => setActiveTab('weight')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'weight' ? 'var(--bg-surface)' : 'transparent',
-              color: activeTab === 'weight' ? 'var(--color-primary)' : 'var(--text-secondary)',
-              boxShadow: activeTab === 'weight' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'all var(--transition-fast)',
-            }}
+            className={`${styles.tab} ${activeTab === 'weight' ? `${styles.tabActive} ${styles.emerald}` : ''}`}
           >
             <Scale size={14} />
             <span>Weight & Waist</span>
@@ -203,21 +192,7 @@ export function DashboardCharts({
           <button
             type="button"
             onClick={() => setActiveTab('volume')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'volume' ? 'var(--bg-surface)' : 'transparent',
-              color: activeTab === 'volume' ? 'var(--color-cyan)' : 'var(--text-secondary)',
-              boxShadow: activeTab === 'volume' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'all var(--transition-fast)',
-            }}
+            className={`${styles.tab} ${activeTab === 'volume' ? `${styles.tabActive} ${styles.cyan}` : ''}`}
           >
             <Dumbbell size={14} />
             <span>Workout Volume</span>
@@ -226,21 +201,7 @@ export function DashboardCharts({
           <button
             type="button"
             onClick={() => setActiveTab('nutrition')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'nutrition' ? 'var(--bg-surface)' : 'transparent',
-              color: activeTab === 'nutrition' ? 'var(--color-amber)' : 'var(--text-secondary)',
-              boxShadow: activeTab === 'nutrition' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'all var(--transition-fast)',
-            }}
+            className={`${styles.tab} ${activeTab === 'nutrition' ? `${styles.tabActive} ${styles.amber}` : ''}`}
           >
             <Flame size={14} />
             <span>Calorie Intake</span>
@@ -250,173 +211,59 @@ export function DashboardCharts({
 
       {/* Summary KPI Badges Row */}
       {activeTab === 'weight' && weightMetrics && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '0.65rem',
-          }}
-        >
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Current Weight</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--text-primary)', marginTop: '2px' }}>
-              {weightMetrics.current} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>kg</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Net Change</div>
-            <div
-              style={{
-                fontSize: '1.25rem',
-                fontWeight: 850,
-                color: weightMetrics.netChange <= 0 ? 'var(--color-primary)' : 'var(--color-amber)',
-                marginTop: '2px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              {weightMetrics.netChange <= 0 ? <TrendingDown size={15} /> : <TrendingUp size={15} />}
-              {weightMetrics.netChange > 0 ? `+${weightMetrics.netChange}` : weightMetrics.netChange} kg
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>60-Day Goal</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Target size={15} />
-              {targetWeight} kg
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Current Waist</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-cyan)', marginTop: '2px' }}>
-              {weightMetrics.latestWaist ? `${weightMetrics.latestWaist} cm` : '--'}
-            </div>
-          </div>
+        <div className={styles.summaryGrid}>
+          <StatTile icon={Scale} tone="slate" label="Current Weight" value={weightMetrics.current} unit="kg" />
+          <StatTile
+            icon={weightMetrics.netChange <= 0 ? TrendingDown : TrendingUp}
+            tone={weightMetrics.netChange <= 0 ? 'emerald' : 'amber'}
+            label="Net Change"
+            value={weightMetrics.netChange > 0 ? `+${weightMetrics.netChange}` : weightMetrics.netChange}
+            unit="kg"
+            trend={weightMetrics.netChange <= 0 ? 'down' : 'up'}
+          />
+          <StatTile icon={Target} tone="emerald" label={`${programDuration}-Day Goal`} value={targetWeight} unit="kg" />
+          <StatTile icon={Ruler} tone="cyan" label="Current Waist" value={weightMetrics.latestWaist ? weightMetrics.latestWaist : '--'} unit={weightMetrics.latestWaist ? 'cm' : undefined} />
         </div>
       )}
 
       {activeTab === 'volume' && volumeMetrics && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '0.65rem',
-          }}
-        >
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Latest Session</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-cyan)', marginTop: '2px' }}>
-              {volumeMetrics.latest.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>kg</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Avg / Session</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--text-primary)', marginTop: '2px' }}>
-              {volumeMetrics.avg.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>kg</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Sessions Tracked</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-primary)', marginTop: '2px' }}>
-              {volumeMetrics.sessionsCount} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>workouts</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Total Volume</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-primary)', marginTop: '2px' }}>
-              {Math.round(volumeMetrics.total).toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>kg</span>
-            </div>
-          </div>
+        <div className={styles.summaryGrid}>
+          <StatTile icon={Zap} tone="cyan" label="Latest Session" value={volumeMetrics.latest.toLocaleString()} unit="kg" />
+          <StatTile icon={Dumbbell} tone="slate" label="Avg / Session" value={volumeMetrics.avg.toLocaleString()} unit="kg" />
+          <StatTile icon={ListChecks} tone="emerald" label="Sessions Tracked" value={volumeMetrics.sessionsCount} unit="workouts" />
+          <StatTile icon={TrendingUp} tone="emerald" label="Total Volume" value={Math.round(volumeMetrics.total).toLocaleString()} unit="kg" trend="up" />
         </div>
       )}
 
       {activeTab === 'nutrition' && nutritionMetrics && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '0.65rem',
-          }}
-        >
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Daily Target</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-amber)', marginTop: '2px' }}>
-              {nutritionMetrics.targetCalories} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>kcal</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Latest Intake</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--text-primary)', marginTop: '2px' }}>
-              {nutritionMetrics.latestCalories} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>kcal</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Latest Protein</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-primary)', marginTop: '2px' }}>
-              {nutritionMetrics.latestProtein} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>g</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-surface-elevated)', padding: '0.65rem 0.85rem', border: '1px solid var(--border-subtle)' }}>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Adherence</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--color-primary)', marginTop: '2px' }}>
-              {nutritionMetrics.adherencePct}%
-            </div>
-          </div>
+        <div className={styles.summaryGrid}>
+          <StatTile icon={Target} tone="amber" label="Daily Target" value={nutritionMetrics.targetCalories} unit="kcal" />
+          <StatTile icon={Flame} tone="slate" label="Latest Intake" value={nutritionMetrics.latestCalories} unit="kcal" />
+          <StatTile icon={Dumbbell} tone="emerald" label="Latest Protein" value={nutritionMetrics.latestProtein} unit="g" />
+          <StatTile icon={Percent} tone="emerald" label="Adherence" value={nutritionMetrics.adherencePct} unit="%" />
         </div>
       )}
 
       {/* Main Chart Canvas */}
-      <div style={{ minHeight: 220 }}>
+      <div className={styles.chartArea}>
         {activeTab === 'weight' && (
           weightChartData.length > 0 ? (
             <MetricChart
               data={weightChartData}
-              title="Bodyweight Recomposition Trend"
-              subtitle="Daily scale weight logged fasted vs 60-day goal trajectory"
+              title="Bodyweight Progression Trend"
+              subtitle={`Daily scale weight logged fasted vs ${programDuration}-day goal trajectory`}
               unit="kg"
               type="line"
               color="#059669"
               height={220}
               targetValue={targetWeight}
-              targetLabel="60-Day Goal"
+              targetLabel={`${programDuration}-Day Goal`}
               targetColor="#0284C7"
             />
           ) : (
-            <div
-              style={{
-                height: 200,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'var(--bg-surface-elevated)',
-                gap: '0.75rem',
-              }}
-            >
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No weight logs found yet.</div>
-              <Link
-                href="/app/daily"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '6px 12px',
-                  background: 'var(--color-primary)',
-                  color: '#052b20',
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                }}
-              >
+            <div className={styles.emptyState}>
+              <div className={styles.emptyStateText}>No weight logs found yet.</div>
+              <Link href="/app/daily" className={`${styles.emptyStateLink} ${styles.emerald}`}>
                 Log Morning Weight <ArrowRight size={14} />
               </Link>
             </div>
@@ -438,31 +285,9 @@ export function DashboardCharts({
               targetColor="#D97706"
             />
           ) : (
-            <div
-              style={{
-                height: 200,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'var(--bg-surface-elevated)',
-                gap: '0.75rem',
-              }}
-            >
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No workout sessions completed yet.</div>
-              <Link
-                href="/app/workouts/active"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '6px 12px',
-                  background: 'var(--color-cyan)',
-                  color: '#FFFFFF',
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                }}
-              >
+            <div className={styles.emptyState}>
+              <div className={styles.emptyStateText}>No workout sessions completed yet.</div>
+              <Link href="/app/workouts/active" className={`${styles.emptyStateLink} ${styles.cyan}`}>
                 Start Workout Session <ArrowRight size={14} />
               </Link>
             </div>
@@ -474,7 +299,7 @@ export function DashboardCharts({
             <MetricChart
               data={nutritionChartData}
               title="Daily Caloric Intake vs Target"
-              subtitle="Daily calories consumed vs 2,160 kcal fat loss deficit target"
+              subtitle={`Daily calories consumed vs ${dailyCaloriesTarget.toLocaleString()} kcal target`}
               unit="kcal"
               type="bar"
               color="#D97706"
@@ -484,37 +309,15 @@ export function DashboardCharts({
               targetColor="#059669"
             />
           ) : (
-            <div
-              style={{
-                height: 200,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'var(--bg-surface-elevated)',
-                gap: '0.75rem',
-              }}
-            >
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No nutrition logs recorded this week.</div>
-              <Link
-                href="/app/daily"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '6px 12px',
-                  background: 'var(--color-amber)',
-                  color: '#FFFFFF',
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                }}
-              >
+            <div className={styles.emptyState}>
+              <div className={styles.emptyStateText}>No nutrition logs recorded this week.</div>
+              <Link href="/app/daily" className={`${styles.emptyStateLink} ${styles.amber}`}>
                 Log Today&apos;s Meals <ArrowRight size={14} />
               </Link>
             </div>
           )
         )}
       </div>
-    </div>
+    </Card>
   );
 }

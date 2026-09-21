@@ -6,6 +6,7 @@ from django.db import models
 from workouts.models import WorkoutSession, AssignedWorkout, CardioEntry, JourneyProgram
 from nutrition.models import NutritionDay, MacroTarget
 from progress.models import PersonalRecord, WeightEntry, BodyMeasurement
+from .pacing import calculate_journey_pacing, calculate_rolling_average
 
 class DashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -84,9 +85,9 @@ class DashboardStatsView(APIView):
         weights = list(WeightEntry.objects.filter(user=user).order_by('date'))
         current_weight = weights[-1].weight_kg if weights else None
         starting_weight = weights[0].weight_kg if weights else None
-        rolling = round(sum(w.weight_kg for w in weights[-7:]) / min(7, len(weights)), 2) if weights else None
-        previous = weights[-14:-7]
-        weekly_change = round(rolling - (sum(w.weight_kg for w in previous) / len(previous)), 2) if rolling is not None and previous else None
+        rolling = calculate_rolling_average([w.weight_kg for w in weights])
+        previous_avg = calculate_rolling_average([w.weight_kg for w in weights[-14:-7]])
+        weekly_change = round(rolling - previous_avg, 2) if rolling is not None and previous_avg is not None else None
         measurements = list(BodyMeasurement.objects.filter(user=user).order_by('date'))
         current_waist = next((m.waist_cm for m in reversed(measurements) if m.waist_cm is not None), None)
         starting_waist = next((m.waist_cm for m in measurements if m.waist_cm is not None), None)
@@ -138,10 +139,84 @@ class DashboardStatsView(APIView):
             for d in last_7_days
         ]
 
+        pacing_data = calculate_journey_pacing(user, program)
+        resolved_starting_weight = (pacing_data.get('velocity') or {}).get('start_weight') or starting_weight
+        resolved_starting_waist = pacing_data.get('starting_waist') or starting_waist
+        resolved_current_waist = pacing_data.get('current_waist') or current_waist
+        weekly_workouts_target = pacing_data.get('weekly_workouts_target', 5)
+
+        # Server-computed adherence payload
+        adh_pacing = pacing_data.get('adherence') or {}
+        workout_adh_pct = adh_pacing.get('adherence_pct')
+        if workout_adh_pct is None:
+            workout_adh_pct = min(100.0, round((workouts_this_week / max(1, weekly_workouts_target)) * 100.0, 1))
+
+        cal_target = target.daily_calories or 0
+        cal_pct = min(100.0, round((calories_consumed / max(1, cal_target)) * 100.0, 1)) if cal_target else 0.0
+
+        protein_target = target.protein_g or 0
+        protein_pct = min(100.0, round((protein_consumed / max(1, protein_target)) * 100.0, 1)) if protein_target else 0.0
+
+        water_target = target.water_ml or 3000
+        water_pct = min(100.0, round((water_consumed / max(1, water_target)) * 100.0, 1)) if water_target else 0.0
+
+        cardio_pct = min(100.0, round((cardio_minutes / max(1, target_cardio)) * 100.0, 1)) if target_cardio else 0.0
+
+        adherence_data = {
+            'workout': {
+                'label': 'Workout Adherence' if program else 'Weekly Workouts',
+                'actual': adh_pacing.get('completed_sessions', workouts_this_week),
+                'target': adh_pacing.get('scheduled_sessions', weekly_workouts_target),
+                'percent': workout_adh_pct,
+                'unit': 'sessions',
+                'status': adh_pacing.get('status', 'EXCELLENT' if workout_adh_pct >= 85 else 'WARN'),
+                'is_program': bool(program),
+                'message': adh_pacing.get('message', ''),
+            },
+            'weekly_workouts': {
+                'label': 'Weekly Workouts',
+                'actual': workouts_this_week,
+                'target': weekly_workouts_target,
+                'percent': min(100.0, round((workouts_this_week / max(1, weekly_workouts_target)) * 100.0, 1)),
+                'unit': 'sessions',
+            },
+            'calories': {
+                'label': 'Calories',
+                'actual': calories_consumed,
+                'target': cal_target,
+                'percent': cal_pct,
+                'unit': 'kcal',
+            },
+            'protein': {
+                'label': 'Protein',
+                'actual': protein_consumed,
+                'target': protein_target,
+                'percent': protein_pct,
+                'unit': 'g',
+            },
+            'water': {
+                'label': 'Water',
+                'actual': water_consumed,
+                'target': water_target,
+                'actual_cups': round(water_consumed / 250),
+                'target_cups': round(water_target / 250),
+                'percent': water_pct,
+                'unit': 'cups',
+            },
+            'cardio': {
+                'label': 'Weekly Cardio',
+                'actual': cardio_minutes,
+                'target': target_cardio,
+                'percent': cardio_pct,
+                'unit': 'min',
+            },
+        }
+
         return Response({
             'streak_days': streak,
             'workouts_this_week': workouts_this_week,
             'workouts_this_month': workouts_this_month,
+            'weekly_workouts_target': weekly_workouts_target,
             'total_volume_kg_week': round(total_volume_week, 1),
             'nutrition': {
                 'calories_consumed': calories_consumed,
@@ -159,18 +234,38 @@ class DashboardStatsView(APIView):
             'pending_assigned_workout': pending_workout_data,
             'recent_prs': prs_data,
             'journey': {
-                'current_weight': current_weight, 'starting_weight': starting_weight,
-                'weight_change': round(current_weight - starting_weight, 2) if current_weight is not None and starting_weight is not None else None,
-                'seven_day_average': rolling, 'weekly_weight_change': weekly_change,
-                'current_waist': current_waist, 'starting_waist': starting_waist,
-                'waist_change': round(current_waist - starting_waist, 1) if current_waist is not None and starting_waist is not None else None,
-                'cardio_minutes': cardio_minutes, 'cardio_target': target_cardio,
-                'program_day': program.current_day if program else None, 'program_length': program.duration_days if program else 60,
+                'mode': program.mode if program else 'CUT',
+                'mode_label': dict(JourneyProgram.MODE_CHOICES).get(program.mode, program.mode) if program else 'Cut Mode',
+                'copilot_insight': pacing_data.get('copilot_insight', ''),
+                'current_weight': current_weight,
+                'starting_weight': resolved_starting_weight,
+                'target_weight': pacing_data.get('target_weight'),
+                'weight_change': round(current_weight - resolved_starting_weight, 2) if current_weight is not None and resolved_starting_weight is not None else None,
+                'seven_day_average': rolling,
+                'weekly_weight_change': weekly_change,
+                'current_waist': resolved_current_waist,
+                'starting_waist': resolved_starting_waist,
+                'waist_change': round(resolved_current_waist - resolved_starting_waist, 1) if resolved_current_waist is not None and resolved_starting_waist is not None else None,
+                'cardio_minutes': cardio_minutes,
+                'cardio_target': target_cardio,
+                'weekly_workouts_target': weekly_workouts_target,
+                'program_day': program.current_day if program else None,
+                'program_length': program.duration_days if program else 60,
                 'program_completion_percent': round(((program.current_day - 1) / program.duration_days) * 100, 1) if program else 0,
             },
+            'journey_pacing': pacing_data,
+            'adherence': adherence_data,
             'trends': {
                 'weight': weight_trend,
                 'volume': volume_trend,
                 'nutrition': nutrition_trend,
             }
         })
+
+class JourneyPacingStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        pacing = calculate_journey_pacing(request.user)
+        return Response(pacing)
+

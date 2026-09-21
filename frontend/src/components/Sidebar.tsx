@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -14,11 +14,13 @@ import {
   Award,
   BookOpen,
   Target,
+  History,
   Users,
   Building2,
   Dumbbell,
   Plus,
   LogOut,
+  Settings,
   X,
   ChevronLeft,
   ChevronRight,
@@ -27,6 +29,8 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
+import { api } from '@/lib/api';
+import { JourneyPacingData } from '@/lib/types';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 
@@ -35,7 +39,7 @@ interface NavItem {
   href: string;
   icon: LucideIcon;
   badge?: string;
-  badgeVariant?: 'amber' | 'violet' | 'emerald' | 'cyan';
+  badgeVariant?: 'amber' | 'violet' | 'emerald' | 'cyan' | 'rose';
 }
 
 interface SidebarProps {
@@ -53,17 +57,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
   const isTrainer = user?.memberships?.some((m) => m.role === 'TRAINER');
   const isOwner = user?.memberships?.some((m) => m.role === 'OWNER');
 
+  const [journey, setJourney] = useState<JourneyPacingData | null>(null);
+
+  useEffect(() => {
+    api.getJourneyPacingStatus().then(setJourney).catch(() => setJourney(null));
+  }, []);
+
+  const planBadge = journey?.has_program ? `Day ${journey.current_day}/${journey.duration_days}` : undefined;
+  const planBadgeVariant: NavItem['badgeVariant'] = journey?.is_calibrating
+    ? 'cyan'
+    : journey?.pacing_status === 'PACING_ALERT'
+      ? 'amber'
+      : journey?.pacing_status === 'OFF_TRACK'
+        ? 'rose'
+        : 'emerald';
+
   const mainNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/app', icon: LayoutDashboard },
     { label: 'Today', href: '/app/workouts/active', icon: PlayCircle },
-    { label: 'Plan', href: '/app/workouts/plan', icon: CalendarDays },
+    { label: 'Plan', href: '/app/workouts/plan', icon: CalendarDays, badge: planBadge, badgeVariant: planBadgeVariant },
+    { label: 'Plan History', href: '/app/workouts/plan/history', icon: History },
     { label: 'Daily Log', href: '/app/daily', icon: ClipboardList },
     { label: 'Progress', href: '/app/progress', icon: TrendingUp },
     { label: 'Measurements', href: '/app/measurements', icon: Ruler },
     { label: 'Nutrition', href: '/app/nutrition', icon: Utensils },
     { label: 'Review', href: '/app/review', icon: Award },
     { label: 'Guidelines', href: '/app/guidelines', icon: BookOpen },
-    { label: 'Day 60', href: '/app/expectations', icon: Target },
+    { label: 'Milestones', href: '/app/expectations', icon: Target },
+    { label: 'Settings', href: '/app/settings', icon: Settings },
   ];
 
   const managementNavItems: NavItem[] = [
@@ -78,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
     if (href === '/app/workouts/plan') {
       return (
         pathname === '/app/workouts/plan' ||
-        pathname.startsWith('/app/workouts/plan/') ||
+        (pathname.startsWith('/app/workouts/plan/') && !pathname.startsWith('/app/workouts/plan/history')) ||
         pathname.startsWith('/app/workouts/routines')
       );
     }

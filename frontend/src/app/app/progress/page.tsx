@@ -2,21 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { TrendingUp, Plus, Scale, Trophy, Ruler, Calendar, ArrowRight } from 'lucide-react';
+import { TrendingUp, Plus, Scale, Trophy, Ruler, Calendar, ArrowRight, SlidersHorizontal, Compass } from 'lucide-react';
 import { api } from '@/lib/api';
-import { WeightEntry, BodyMeasurement, PersonalRecord } from '@/lib/types';
+import { WeightEntry, BodyMeasurement, PersonalRecord, JourneyPacingData, JourneyMode } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { MetricChart } from '@/components/MetricChart';
+import { RightPathCard } from '@/components/RightPathCard';
+import { PlanSelectorModal } from '@/components/PlanSelectorModal';
 
 export default function ProgressPage() {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [prs, setPrs] = useState<PersonalRecord[]>([]);
+  const [pacing, setPacing] = useState<JourneyPacingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [logWeightModal, setLogWeightModal] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
 
   // Form
   const [newWeight, setNewWeight] = useState<number>(80.0);
@@ -26,14 +30,22 @@ export default function ProgressPage() {
 
   const loadProgress = async () => {
     try {
-      const [wData, mData, prData] = await Promise.all([
+      const [wData, mData, prData, pacingData] = await Promise.all([
         api.getWeights(),
         api.getMeasurements(),
         api.getPersonalRecords(),
+        api.getJourneyPacingStatus(),
       ]);
-      setWeights(wData.results || wData);
+      const wList = wData.results || wData;
+      setWeights(wList);
       setMeasurements(mData.results || mData);
       setPrs(prData.results || prData);
+      setPacing(pacingData);
+      if (wList.length > 0 && wList[0]?.weight_kg) {
+        setNewWeight(wList[0].weight_kg);
+      } else if (pacingData?.velocity?.start_weight) {
+        setNewWeight(pacingData.velocity.start_weight);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -83,11 +95,23 @@ export default function ProgressPage() {
           </p>
         </div>
 
-        <Button variant="primary" onClick={() => setLogWeightModal(true)}>
-          <Plus size={16} />
-          <span>Log Weight</span>
-        </Button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button variant="secondary" onClick={() => setPlanModalOpen(true)}>
+            <SlidersHorizontal size={16} />
+            <span>Mode &amp; Plan</span>
+          </Button>
+          <Button variant="primary" onClick={() => setLogWeightModal(true)}>
+            <Plus size={16} />
+            <span>Log Weight</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Right Path Mission Control */}
+      <RightPathCard
+        pacing={pacing}
+        onOpenPlanSelector={() => setPlanModalOpen(true)}
+      />
 
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
@@ -238,49 +262,135 @@ export default function ProgressPage() {
       </div>
 
       {/* 60-Day Target & Milestone Checkpoints */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-          <Calendar size={20} color="var(--color-primary)" />
-          <h2 style={{ fontSize: '1.35rem' }}>60-Day Target &amp; Milestone Checkpoints</h2>
-        </div>
-        <Card>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Starting Weight</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>77.76 kg</div>
+      {/* Target & Milestone Checkpoints */}
+      {(() => {
+        const mode = (pacing?.mode || 'CUT') as JourneyMode;
+        const duration = pacing?.duration_days || 60;
+        const currentDay = pacing?.current_day || 1;
+        const resolvedStartWeight = pacing?.velocity?.start_weight ?? (startWeight > 0 ? startWeight : null);
+        const resolvedStartWaist = pacing?.starting_waist ?? ([...measurements].reverse().find((m) => m.waist_cm != null)?.waist_cm ?? null);
+        const targetW = pacing?.target_weight ?? pacing?.velocity?.expected_final_weight ?? null;
+        
+        let expectedDeltaStr = '--';
+        let expectedDeltaLabel = 'Expected Change';
+        if (mode === 'BULK') expectedDeltaLabel = 'Expected Gain';
+        else if (mode === 'CUT') expectedDeltaLabel = 'Expected Loss';
+
+        if (resolvedStartWeight != null && targetW != null) {
+          const d = Math.round((targetW - resolvedStartWeight) * 10) / 10;
+          expectedDeltaStr = `${d > 0 ? '+' : ''}${d} kg`;
+        } else if (pacing?.velocity?.target_weekly_rate != null) {
+          const d = Math.round((pacing.velocity.target_weekly_rate * (duration / 7)) * 10) / 10;
+          expectedDeltaStr = `${d > 0 ? '+' : ''}${d} kg`;
+        }
+
+        const targetRangeStr = targetW != null
+          ? `${(targetW - 0.5).toFixed(1)} – ${(targetW + 0.5).toFixed(1)} kg`
+          : 'Awaiting target';
+
+        const q1 = Math.max(1, Math.round(duration * 0.25));
+        const q2 = Math.max(q1 + 1, Math.round(duration * 0.5));
+        const q3 = Math.max(q2 + 1, Math.round(duration * 0.75));
+        const q4 = duration;
+
+        const milestoneCopy: Record<JourneyMode, Array<[string, string]>> = {
+          CUT: [
+            ['Quarter milestone check-in', 'Evaluate water flush, early fat loss, and midsection tightness.'],
+            ['Halfway checkpoint', 'Assess abdominal fat reduction vs compound strength preservation.'],
+            ['Three-quarter checkpoint', 'Shoulder/chest definition, vascularity, and visible waist taper.'],
+            ['Final transformation reveal', 'Final measurement comparison against Day 1 baseline.'],
+          ],
+          BULK: [
+            ['Early hypertrophy check-in', 'Neuromuscular efficiency and baseline surplus adaptation.'],
+            ['Halfway mass checkpoint', 'Working weight progression on compound lifts with clean surplus.'],
+            ['Three-quarter volume check', 'Muscle fullness and strength gains across primary compounds.'],
+            ['Final surplus review', 'Evaluate total lean mass accrual and strength 1RMs vs Day 1.'],
+          ],
+          FOCUS: [
+            ['Technique calibration check-in', 'Bar speed and clean setup locked in on primary compound anchors.'],
+            ['Halfway strength anchor check', 'Intermediate load ramp-up on target compound exercise.'],
+            ['Three-quarter peak check', 'Heavy single/triple readiness and neurological recovery assessment.'],
+            ['Final 1RM test & reveal', 'Test primary lift maxes against target 1RM goal.'],
+          ],
+          RECOMP: [
+            ['Metabolic stabilization check-in', 'Establish rolling weight corridor and waist tape baseline.'],
+            ['Halfway recomposition check', 'Waist tightening while compound lifts remain steady or climb.'],
+            ['Three-quarter density check', 'Visual conditioning tightening with stable scale bodyweight.'],
+            ['Final recomposition review', 'Side-by-side tape and photo comparison against Day 1.'],
+          ],
+          HABIT: [
+            ['Early rhythm check-in', 'Establishing consistent daily morning weigh-ins and workout attendance.'],
+            ['Halfway routine checkpoint', 'Frictionless habit execution across training, hydration, and sleep.'],
+            ['Three-quarter streak check', 'Automated consistency with high adherence score.'],
+            ['Final habit mastery review', 'Sustainable lifestyle foundation established for long-term fitness.'],
+          ],
+        };
+
+        const currentModeMilestones = milestoneCopy[mode] || milestoneCopy.CUT;
+        const checkpointItems = [
+          { day: q1, title: currentModeMilestones[0][0], note: currentModeMilestones[0][1] },
+          { day: q2, title: currentModeMilestones[1][0], note: currentModeMilestones[1][1] },
+          { day: q3, title: currentModeMilestones[2][0], note: currentModeMilestones[2][1] },
+          { day: q4, title: currentModeMilestones[3][0], note: currentModeMilestones[3][1] },
+        ];
+
+        return (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+              <Calendar size={20} color="var(--color-primary)" />
+              <h2 style={{ fontSize: '1.35rem' }}>{duration}-Day Target &amp; Milestone Checkpoints</h2>
             </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>60-Day Target Range</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem', color: 'var(--color-primary)' }}>73.5 &ndash; 74.5 kg</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Expected Loss</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>-3.5 to -4.5 kg</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Starting Waist</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>93 cm</div>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gap: 0, borderTop: '1px solid var(--border-subtle)' }}>
-            {[
-              ['Day 15', 'Quarter milestone check-in', 'Evaluate water flush and midsection tightness.'],
-              ['Day 30', 'Halfway milestone', 'Halfway evaluation: abdominal fat reduction vs strength preservation.'],
-              ['Day 45', 'Three-quarter transformation check', '3/4 mark: shoulder/chest definition, vascularity, waist taper.'],
-              ['Day 60', 'Final transformation reveal', 'Final check: compare side-by-side with the Day 1 baseline.'],
-            ].map(([day, title, note]) => (
-              <div key={day} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 2fr', gap: '1rem', padding: '.7rem 0', borderBottom: '1px solid var(--border-subtle)', fontSize: '.85rem' }}>
-                <strong style={{ color: 'var(--color-primary)' }}>{day}</strong>
-                <strong>{title}</strong>
-                <span style={{ color: 'var(--text-secondary)' }}>{note}</span>
+            <Card>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Starting Weight</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>
+                    {resolvedStartWeight != null ? `${resolvedStartWeight} kg` : '—'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>{duration}-Day Target Range</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem', color: 'var(--color-primary)' }}>
+                    {targetRangeStr}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>{expectedDeltaLabel}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>
+                    {expectedDeltaStr}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Starting Waist</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>
+                    {resolvedStartWaist != null ? `${resolvedStartWaist} cm` : '—'}
+                  </div>
+                </div>
               </div>
-            ))}
+              <div style={{ display: 'grid', gap: 0, borderTop: '1px solid var(--border-subtle)' }}>
+                {checkpointItems.map(({ day, title, note }) => {
+                  const isPast = currentDay > day;
+                  const isCurrent = currentDay <= day && (day === q1 || currentDay > (checkpointItems.find((c) => c.day < day)?.day || 0));
+                  return (
+                    <div key={day} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 2fr', gap: '1rem', padding: '.75rem 0', borderBottom: '1px solid var(--border-subtle)', fontSize: '.85rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <strong style={{ color: isPast ? 'var(--text-muted)' : 'var(--color-primary)' }}>Day {day}</strong>
+                        {isPast && <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-primary)', padding: '2px 5px', borderRadius: 4, fontWeight: 700 }}>Passed</span>}
+                        {isCurrent && <span style={{ fontSize: '0.65rem', background: 'rgba(14, 165, 233, 0.15)', color: '#0EA5E9', padding: '2px 5px', borderRadius: 4, fontWeight: 700 }}>Next</span>}
+                      </div>
+                      <strong>{title}</strong>
+                      <span style={{ color: 'var(--text-secondary)' }}>{note}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', marginTop: '.85rem' }}>
+                Take front, side and back photos on Days 1, {q1}, {q2}, {q3} and {q4} under consistent lighting and a relaxed posture.
+              </p>
+            </Card>
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', marginTop: '.85rem' }}>
-            Take front, side and back photos on Days 1, 15, 30, 45 and 60 under consistent lighting and a relaxed posture.
-          </p>
-        </Card>
-      </div>
+        );
+      })()}
 
       {/* Log Weight Modal */}
       <Modal isOpen={logWeightModal} onClose={() => setLogWeightModal(false)} title="Log Daily Weight">
@@ -364,6 +474,15 @@ export default function ProgressPage() {
           </div>
         </div>
       </Modal>
+
+      <PlanSelectorModal
+        isOpen={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        onSuccess={() => {
+          loadProgress();
+        }}
+        initialWeight={pacing?.velocity?.rolling_7_avg || currentWeight || pacing?.velocity?.start_weight || 75.0}
+      />
     </div>
   );
 }

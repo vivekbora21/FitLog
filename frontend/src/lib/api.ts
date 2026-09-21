@@ -1,3 +1,5 @@
+import type { JourneyDetail } from './types';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 class ApiClient {
@@ -63,6 +65,14 @@ class ApiClient {
       } catch (e) {
         // Not JSON
       }
+
+      if (res.status === 401 && typeof window !== 'undefined') {
+        this.logout();
+        if (window.location.pathname.startsWith('/app')) {
+          window.location.href = '/login';
+        }
+      }
+
       const error = new Error(`API Error: ${res.status} ${res.statusText}`);
       (error as any).response = errorBody;
       (error as any).status = res.status;
@@ -99,6 +109,32 @@ class ApiClient {
 
   async getMe() {
     return this.request<any>('/auth/me/');
+  }
+
+  async updateMe(payload: {
+    first_name?: string;
+    last_name?: string;
+    avatar_url?: string | null;
+    profile?: {
+      date_of_birth?: string | null;
+      height_cm?: number | null;
+      weight_kg?: number | null;
+      fitness_goal?: string;
+      unit_preference?: string;
+      bio?: string;
+    };
+  }) {
+    return this.request<any>('/auth/me/', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async changePassword(old_password: string, new_password: string) {
+    return this.request<{ detail: string }>('/auth/change-password/', {
+      method: 'POST',
+      body: JSON.stringify({ old_password, new_password }),
+    });
   }
 
   // Gyms & Memberships
@@ -283,10 +319,39 @@ class ApiClient {
     return this.request<any>(`/audit-logs/?gym_id=${gymId}`);
   }
 
-  // Analytics
+  // Analytics & Journey
   async getDashboardStats() {
     return this.request<any>('/analytics/dashboard/');
+  }
+
+  async getJourneyPacingStatus() {
+    return this.request<any>('/analytics/journey-status/');
+  }
+
+  async getJourneyHistory() {
+    return this.request<any>('/workouts/sessions/journey-history/');
+  }
+
+  async getJourneyDetail(id: string) {
+    return this.request<JourneyDetail>(`/workouts/sessions/journey/${id}/`);
+  }
+
+  async startJourney(payload: {
+    mode: string;
+    duration_days: number;
+    start_weight_kg?: number | null;
+    target_weight_kg?: number | null;
+    name?: string;
+    blueprint?: string;
+    focus_exercise_id?: string | null;
+    target_focus_1rm?: number | null;
+  }) {
+    return this.request<any>('/workouts/sessions/start-journey/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 }
 
 export const api = new ApiClient();
+

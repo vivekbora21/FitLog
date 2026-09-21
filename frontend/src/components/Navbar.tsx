@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Plus, ChevronDown, Building2, LogOut, Menu, Dumbbell, PanelLeft, PanelLeftOpen } from 'lucide-react';
+import { Plus, ChevronDown, Building2, LogOut, Menu, Dumbbell, PanelLeft, PanelLeftOpen, Settings } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -21,7 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarCollap
   const getSectionInfo = () => {
     if (pathname === '/app' || pathname === '/app/') return { title: 'Dashboard', badge: 'Overview' };
     if (pathname.startsWith('/app/workouts/active')) return { title: "Today's Training", badge: 'Live' };
-    if (pathname.startsWith('/app/workouts/plan')) return { title: '60-Day Workout Plan', badge: 'Program' };
+    if (pathname.startsWith('/app/workouts/plan/history')) return { title: 'Plan History', badge: 'Archive' };
+    if (pathname.startsWith('/app/workouts/plan')) return { title: 'Workout Plan', badge: 'Program' };
     if (pathname.startsWith('/app/workouts/routines')) return { title: 'Workout Routines', badge: 'Splits' };
     if (pathname.startsWith('/app/workouts')) return { title: 'Workout History', badge: 'Sessions' };
     if (pathname.startsWith('/app/daily')) return { title: 'Daily Log', badge: 'Check-in' };
@@ -29,7 +30,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarCollap
     if (pathname.startsWith('/app/nutrition')) return { title: 'Nutrition & Macros', badge: 'Fuel' };
     if (pathname.startsWith('/app/review')) return { title: 'Weekly Review', badge: 'Protocol' };
     if (pathname.startsWith('/app/guidelines')) return { title: 'Program Guidelines', badge: 'Guide' };
-    if (pathname.startsWith('/app/expectations')) return { title: 'Day 60 Expectations', badge: 'Transformation' };
+    if (pathname.startsWith('/app/expectations')) return { title: 'Milestones & Expectations', badge: 'Transformation' };
+    if (pathname.startsWith('/app/settings')) return { title: 'Settings', badge: 'Account' };
     if (pathname.startsWith('/app/trainer')) return { title: 'Trainer Hub', badge: 'Coach Portal' };
     if (pathname.startsWith('/app/gym')) return { title: 'Gym Admin', badge: 'Facility' };
     return { title: 'FitLog Pro', badge: 'App' };
@@ -210,6 +212,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarCollap
                     {user?.email}
                   </div>
                 </div>
+
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    router.push('/app/settings');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Settings size={14} />
+                  <span>Settings</span>
+                </button>
 
                 <button
                   onClick={handleLogout}

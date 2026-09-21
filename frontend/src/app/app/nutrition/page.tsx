@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Utensils, Plus, Droplets, Trash2, Calendar, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
-import { NutritionDay, MacroTarget, MealEntry } from '@/lib/types';
+import { NutritionDay, MacroTarget, MealEntry, JourneyPacingData, JourneyMode } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -36,17 +36,37 @@ const staples = [
   ['Roasted Chana (Bengal Gram)', '50g dry weighed', '11g', 180, 'Tier 2: low-GI high-fiber portable snack'],
   ['Rolled Oats (Plain)', '60g dry weighed', '8g', 230, 'Tier 3: beta-glucan heart & sustained energy'],
 ] as const;
-const adjustmentProtocol = [
-  ['Week 1–2 Baseline Check', 'Drop of 1.2–2.0 kg in first 10 days', 'Expected initial glycogen, sodium, and water depletion — not all fat loss.', 'Hold calories steady. Do NOT increase food yet; allow water balance to normalize.'],
-  ['Week 3 Assessment: Too Slow', 'Weight loss < 0.30 kg/week for 2 weeks', 'Metabolic adaptation, hidden cooking oils, or decreased daily steps.', 'Drop 150 kcal/day (cut 1 roti or 40g rice), or add 20 min cardio/week.'],
-  ['Week 3 Assessment: On Target', 'Weight loss 0.40–0.60 kg/week', 'Optimal sweet spot: maximal fat oxidation with zero muscle wasting.', 'Change nothing — maintain identical nutrition, lifting intensity and cardio.'],
-  ['Week 3 Assessment: Too Fast', 'Weight loss > 0.80 kg/week for 2 weeks', 'Excessive deficit risking muscle loss, strength decline, metabolic crash.', 'Increase daily intake by +150 kcal (add 35g oats or 1 banana + 100g curd).'],
-] as const;
+function getAdjustmentProtocol(mode: JourneyMode) {
+  if (mode === 'BULK') {
+    return [
+      ['Week 1–2 Baseline Check', 'Surplus adjustment & glycogen shift', 'Mild initial scale jump as glycogen & water increase with carbohydrates.', 'Hold calories steady. Verify gym energy and recovery before adjusting food.'],
+      ['Week 3: Too Slow (<0.15 kg/wk)', 'Gaining less than 0.15 kg/week', 'High NEAT, fast metabolism, or calorie expenditure higher than estimated.', 'Add +150–200 kcal/day (extra 40g oats + 1 banana or 1 extra roti + ghee).'],
+      ['Week 3: On Target (0.20–0.35 kg/wk)', 'Optimal clean surplus corridor', 'Maximizes myofibrillar hypertrophy with minimal adipose accumulation.', 'Maintain current intake — perfect balance of muscle accrual and leanness.'],
+      ['Week 3: Too Fast (>0.50 kg/wk)', 'Weight climbing faster than 0.50 kg/week', 'Surplus exceeds maximum physiological rate of muscle protein synthesis.', 'Reduce daily intake by 100–150 kcal to preserve lean body composition.'],
+    ] as const;
+  }
+  if (mode === 'FOCUS' || mode === 'HABIT') {
+    return [
+      ['Week 1–2 Baseline Check', 'Weigh-in consistency check', 'Establishing habitual morning weigh-ins and routine meal timing.', 'Focus on logging adherence and consistent meal windows rather than calorie tweaks.'],
+      ['Week 3: Drifting Low', 'Weight dropping >0.25 kg/week', 'Calorie deficit unintentionally creeping in; can compromise workout energy.', 'Add +100–150 kcal/day to maintain energy and stable baseline weight.'],
+      ['Week 3: On Target', 'Weight stable within ±0.20 kg/week', 'Optimal energy and hormonal baseline for habit building and compound strength.', 'Maintain steady daily nutrition and consistent hydration.'],
+      ['Week 3: Drifting High', 'Weight climbing >0.25 kg/week', 'Snacking or liquid calories pushing energy balance above maintenance.', 'Trim 100–150 kcal/day (cut sugary beverages or reduce cooking oil).'],
+    ] as const;
+  }
+  return [
+    ['Week 1–2 Baseline Check', 'Drop of 1.0–2.0 kg in first 10 days', 'Expected initial glycogen, sodium, and water depletion — not all fat loss.', 'Hold calories steady. Do NOT increase food yet; allow water balance to normalize.'],
+    ['Week 3: Too Slow (<0.30 kg/wk)', 'Weight loss stalled < 0.30 kg/week for 2 weeks', 'Metabolic adaptation, hidden cooking oils, or decreased daily steps.', 'Drop 100–150 kcal/day (cut 1 roti or 40g rice), or add 20 min cardio/week.'],
+    ['Week 3: On Target (0.40–0.60 kg/wk)', 'Weight loss 0.40–0.60 kg/week', 'Optimal sweet spot: maximal fat oxidation with zero muscle wasting.', 'Change nothing — maintain identical nutrition, lifting intensity and cardio.'],
+    ['Week 3: Too Fast (>0.80 kg/wk)', 'Weight loss > 0.80 kg/week for 2 weeks', 'Excessive deficit risking muscle loss, strength decline, and metabolic crash.', 'Increase daily intake by +150 kcal (add 35g oats or 1 banana + 100g curd).'],
+  ] as const;
+}
+
 const th2: React.CSSProperties = { fontSize: '.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', textAlign: 'left', padding: '.5rem .5rem' };
 const td2: React.CSSProperties = { padding: '.55rem .5rem', fontSize: '.82rem', borderTop: '1px solid var(--border-subtle)', verticalAlign: 'top' };
 
 export default function NutritionPage() {
   const [data, setData] = useState<{ day: NutritionDay; targets: MacroTarget } | null>(null);
+  const [pacing, setPacing] = useState<JourneyPacingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [addMealModal, setAddMealModal] = useState(false);
 
@@ -61,8 +81,12 @@ export default function NutritionPage() {
 
   const loadNutrition = async () => {
     try {
-      const res = await api.getNutrition('today');
+      const [res, pacingRes] = await Promise.all([
+        api.getNutrition('today'),
+        api.getJourneyPacingStatus().catch(() => null),
+      ]);
       setData(res);
+      setPacing(pacingRes);
     } catch (err) {
       console.error(err);
     } finally {
@@ -282,86 +306,103 @@ export default function NutritionPage() {
         })}
       </div>
 
-      {/* 60-Day Diet Blueprint (reference plan) */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-          <Sparkles size={20} color="var(--color-primary)" />
-          <h2 style={{ fontSize: '1.35rem' }}>60-Day Diet Blueprint</h2>
-        </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '.88rem', marginTop: '-.5rem', marginBottom: '1rem' }}>
-          Two prescribed Indian meal plans — pick Option A on training-heavy days, Option B on tighter-budget or lower-activity days.
-        </p>
+      {/* Dynamic Diet Blueprint (reference plan calibrated to user target) */}
+      {(() => {
+        const duration = pacing?.duration_days || 60;
+        const mode = (pacing?.mode || 'CUT') as JourneyMode;
+        const modeLabel = pacing?.mode_label || 'Nutrition';
+        const targetKcal = data?.targets?.daily_calories || 2160;
+        const targetProtein = data?.targets?.protein_g || 150;
+        const optBKcal = Math.round(targetKcal * 0.88);
+        const optBProtein = Math.max(110, Math.round(targetProtein * 0.85));
+        const adjustmentRows = getAdjustmentProtocol(mode);
 
-        <Card style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem' }}>
-            <h3 style={{ fontSize: '1.05rem' }}>Option A: Recomposition &amp; High-Volume Training</h3>
-            <Badge variant="emerald">2,160 kcal &middot; 165g protein</Badge>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th2}>Meal Window</th><th style={th2}>Food &amp; Recipe</th><th style={th2}>Portion</th><th style={th2}>Kcal</th><th style={th2}>P</th><th style={th2}>C</th><th style={th2}>F</th></tr></thead>
-              <tbody>
-                {optionA.map((row, i) => (
-                  <tr key={i}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={td2}>{row[4]}g</td><td style={td2}>{row[5]}g</td><td style={td2}>{row[6]}g</td></tr>
-                ))}
-                <tr><td style={{ ...td2, fontWeight: 800 }}>Total</td><td style={td2} colSpan={2} /><td style={{ ...td2, fontWeight: 800, color: 'var(--color-primary)' }}>2,160</td><td style={{ ...td2, fontWeight: 800 }}>165g</td><td style={{ ...td2, fontWeight: 800 }}>264g</td><td style={{ ...td2, fontWeight: 800 }}>43g</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem' }}>
-            <h3 style={{ fontSize: '1.05rem' }}>Option B: Moderate Deficit &amp; Tight Budget</h3>
-            <Badge variant="cyan">1,920 kcal &middot; 130g protein</Badge>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th2}>Meal Window</th><th style={th2}>Food &amp; Recipe</th><th style={th2}>Portion</th><th style={th2}>Kcal</th><th style={th2}>P</th><th style={th2}>C</th><th style={th2}>F</th></tr></thead>
-              <tbody>
-                {optionB.map((row, i) => (
-                  <tr key={i}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={td2}>{row[4]}g</td><td style={td2}>{row[5]}g</td><td style={td2}>{row[6]}g</td></tr>
-                ))}
-                <tr><td style={{ ...td2, fontWeight: 800 }}>Total</td><td style={td2} colSpan={2} /><td style={{ ...td2, fontWeight: 800, color: 'var(--color-cyan)' }}>1,920</td><td style={{ ...td2, fontWeight: 800 }}>131g</td><td style={{ ...td2, fontWeight: 800 }}>255g</td><td style={{ ...td2, fontWeight: 800 }}>41g</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      {/* High-protein budget food staples cheat sheet */}
-      <div>
-        <h2 style={{ fontSize: '1.15rem', marginBottom: '.75rem' }}>High-Protein Budget Indian Food Staples</h2>
-        <Card>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th2}>Food Staple</th><th style={th2}>Typical Serving</th><th style={th2}>Protein</th><th style={th2}>Calories</th><th style={th2}>Efficiency Tier &amp; Prep Cue</th></tr></thead>
-              <tbody>
-                {staples.map((row) => (
-                  <tr key={row[0]}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--color-primary)', fontWeight: 700 }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[4]}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      {/* 2-3 week calorie & metabolic adjustment protocol */}
-      <div>
-        <h2 style={{ fontSize: '1.15rem', marginBottom: '.75rem' }}>The 2–3 Week Calorie &amp; Metabolic Adjustment Protocol</h2>
-        <Card>
-          <div style={{ display: 'grid', gap: '.6rem' }}>
-            {adjustmentProtocol.map((row) => (
-              <div key={row[0]} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 0.9fr) minmax(150px, 0.9fr) 1.3fr 1.3fr', gap: '.85rem', padding: '.7rem 0', borderTop: '1px solid var(--border-subtle)', fontSize: '.84rem' }}>
-                <strong>{row[0]}</strong>
-                <span style={{ color: 'var(--text-secondary)' }}>{row[1]}</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{row[2]}</span>
-                <span>{row[3]}</span>
+        return (
+          <>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                <Sparkles size={20} color="var(--color-primary)" />
+                <h2 style={{ fontSize: '1.35rem' }}>{duration}-Day {modeLabel} Blueprint</h2>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '.88rem', marginTop: '-.5rem', marginBottom: '1rem' }}>
+                Two reference meal frameworks calibrated around your target (~{targetKcal.toLocaleString()} kcal, {targetProtein}g protein). Scale carbohydrate portions (rotis, rice, oats) up or down to align with your daily needs.
+              </p>
+
+              <Card style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.05rem' }}>Option A: High-Volume Training Day Fueling</h3>
+                  <Badge variant="emerald">Target ~{targetKcal.toLocaleString()} kcal &middot; {targetProtein}g protein</Badge>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><tr><th style={th2}>Meal Window</th><th style={th2}>Food &amp; Recipe</th><th style={th2}>Portion</th><th style={th2}>Kcal</th><th style={th2}>P</th><th style={th2}>C</th><th style={th2}>F</th></tr></thead>
+                    <tbody>
+                      {optionA.map((row, i) => (
+                        <tr key={i}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={td2}>{row[4]}g</td><td style={td2}>{row[5]}g</td><td style={td2}>{row[6]}g</td></tr>
+                      ))}
+                      <tr><td style={{ ...td2, fontWeight: 800 }}>Reference Total</td><td style={td2} colSpan={2} /><td style={{ ...td2, fontWeight: 800, color: 'var(--color-primary)' }}>2,160</td><td style={{ ...td2, fontWeight: 800 }}>165g</td><td style={{ ...td2, fontWeight: 800 }}>264g</td><td style={{ ...td2, fontWeight: 800 }}>43g</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+
+              <Card>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.05rem' }}>Option B: Lower-Activity &amp; Budget Fueling</h3>
+                  <Badge variant="cyan">Target ~{optBKcal.toLocaleString()} kcal &middot; {optBProtein}g protein</Badge>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><tr><th style={th2}>Meal Window</th><th style={th2}>Food &amp; Recipe</th><th style={th2}>Portion</th><th style={th2}>Kcal</th><th style={th2}>P</th><th style={th2}>C</th><th style={th2}>F</th></tr></thead>
+                    <tbody>
+                      {optionB.map((row, i) => (
+                        <tr key={i}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={td2}>{row[4]}g</td><td style={td2}>{row[5]}g</td><td style={td2}>{row[6]}g</td></tr>
+                      ))}
+                      <tr><td style={{ ...td2, fontWeight: 800 }}>Reference Total</td><td style={td2} colSpan={2} /><td style={{ ...td2, fontWeight: 800, color: 'var(--color-cyan)' }}>1,920</td><td style={{ ...td2, fontWeight: 800 }}>131g</td><td style={{ ...td2, fontWeight: 800 }}>255g</td><td style={{ ...td2, fontWeight: 800 }}>41g</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+
+            {/* High-protein budget food staples cheat sheet */}
+            <div>
+              <h2 style={{ fontSize: '1.15rem', marginBottom: '.75rem' }}>High-Protein Budget Indian Food Staples</h2>
+              <Card>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><tr><th style={th2}>Food Staple</th><th style={th2}>Typical Serving</th><th style={th2}>Protein</th><th style={th2}>Calories</th><th style={th2}>Efficiency Tier &amp; Prep Cue</th></tr></thead>
+                    <tbody>
+                      {staples.map((row) => (
+                        <tr key={row[0]}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--color-primary)', fontWeight: 700 }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[4]}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+
+            {/* 2-3 week calorie & metabolic adjustment protocol */}
+            <div>
+              <h2 style={{ fontSize: '1.15rem', marginBottom: '.75rem' }}>
+                The 2–3 Week Calorie &amp; Metabolic Adjustment Protocol — {pacing?.mode_label || 'Pacing Rules'}
+              </h2>
+              <Card>
+                <div style={{ display: 'grid', gap: '.6rem' }}>
+                  {adjustmentRows.map((row) => (
+                    <div key={row[0]} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 0.9fr) minmax(150px, 0.9fr) 1.3fr 1.3fr', gap: '.85rem', padding: '.7rem 0', borderTop: '1px solid var(--border-subtle)', fontSize: '.84rem' }}>
+                      <strong>{row[0]}</strong>
+                      <span style={{ color: 'var(--text-secondary)' }}>{row[1]}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{row[2]}</span>
+                      <span>{row[3]}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Log Food Modal */}
       <Modal isOpen={addMealModal} onClose={() => setAddMealModal(false)} title="Log Meal Entry">

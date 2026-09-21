@@ -59,14 +59,38 @@ class RoutineExercise(UUIDTimeStampedModel):
 
 class JourneyProgram(UUIDTimeStampedModel):
     """Calendar-independent member program; it advances only on completion."""
+    MODE_CHOICES = [
+        ('CUT', 'Cut Mode'),
+        ('BULK', 'Bulk Mode'),
+        ('FOCUS', 'Focus Mode'),
+        ('RECOMP', 'Recomp Mode'),
+        ('HABIT', 'Habit Reset Mode'),
+    ]
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='journey_programs')
     name = models.CharField(max_length=150, default='60-Day Fitness Journey')
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default='CUT')
     start_date = models.DateField()
     duration_days = models.PositiveSmallIntegerField(default=60)
     current_day = models.PositiveSmallIntegerField(default=1)
     active = models.BooleanField(default=True)
     target_cardio_minutes_early = models.PositiveSmallIntegerField(default=120)
     target_cardio_minutes_later = models.PositiveSmallIntegerField(default=150)
+
+    # Mode-specific targets & anchors
+    start_weight_kg = models.FloatField(null=True, blank=True)
+    target_weight_kg = models.FloatField(null=True, blank=True)
+    target_weekly_rate_kg = models.FloatField(null=True, blank=True)
+    focus_exercise = models.ForeignKey(
+        'exercises.Exercise',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='focus_programs'
+    )
+    target_focus_1rm = models.FloatField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=['user'], condition=models.Q(active=True), name='one_active_journey_per_user')]
 

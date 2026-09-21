@@ -1,3 +1,4 @@
+from django.contrib.auth import password_validation
 from rest_framework import serializers
 from .models import User, UserProfile
 
@@ -34,6 +35,26 @@ class UserSerializer(serializers.ModelSerializer):
             }
             for m in memberships
         ]
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Current password is incorrect.')
+        return value
+
+    def validate_new_password(self, value):
+        password_validation.validate_password(value, user=self.context['request'].user)
+        return value
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)

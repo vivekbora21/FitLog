@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from users.views import RegisterView, MeView
+from users.views import RegisterView, MeView, ChangePasswordView
 from gyms.views import GymViewSet
 from memberships.views import GymMembershipViewSet, TrainerClientViewSet, GymInvitationViewSet, AcceptInvitationView
 from exercises.views import ExerciseViewSet, MuscleGroupViewSet, EquipmentTypeViewSet
@@ -12,7 +12,7 @@ from nutrition.views import NutritionDayView, MealEntryViewSet, MacroTargetView
 from progress.views import WeightEntryViewSet, BodyMeasurementViewSet, PersonalRecordViewSet
 from notifications.views import NotificationViewSet
 from core.views import AuditLogViewSet
-from analytics.views import DashboardStatsView
+from analytics.views import DashboardStatsView, JourneyPacingStatusView
 
 router = DefaultRouter()
 router.register(r'gyms', GymViewSet, basename='gym')
@@ -41,11 +41,13 @@ urlpatterns = [
     path('api/auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/me/', MeView.as_view(), name='auth_me'),
+    path('api/auth/change-password/', ChangePasswordView.as_view(), name='change_password'),
 
     # Custom Domain Actions
     path('api/invitations/<uuid:token>/accept/', AcceptInvitationView.as_view(), name='accept_invitation'),
     path('api/nutrition/macro-targets/', MacroTargetView.as_view(), name='macro_targets'),
     path('api/analytics/dashboard/', DashboardStatsView.as_view(), name='dashboard_stats'),
+    path('api/analytics/journey-status/', JourneyPacingStatusView.as_view(), name='journey_pacing_status'),
 
     # DRF Router endpoints
     path('api/', include(router.urls)),

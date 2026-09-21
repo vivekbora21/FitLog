@@ -1,0 +1,594 @@
+.page {
+  display: grid;
+  gap: 1.35rem;
+}
+
+/* Header */
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.eyebrow {
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0.25rem 0 0;
+  font-size: 2rem;
+  line-height: 1.05;
+}
+
+.subtitle {
+  margin: 0.45rem 0 0;
+  color: var(--text-secondary);
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.actionSecondary {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  font-weight: 800;
+}
+
+.actionPrimary {
+  padding: 0.7rem 0.9rem;
+  background: var(--color-primary);
+  color: #052b20;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Metric tiles */
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+}
+
+.tile {
+  padding: 0.9rem 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-height: 92px;
+}
+
+.tileIcon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tileBody {
+  min-width: 0;
+}
+
+.tileLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tileValue {
+  font-size: 1.4rem;
+  font-weight: 850;
+  margin-top: 0.3rem;
+  line-height: 1.05;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tileNote {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  margin-top: 0.3rem;
+}
+
+.tileIcon.toneNeutral {
+  background: var(--chip-slate);
+  color: var(--text-primary);
+}
+
+.tileIcon.toneUp {
+  background: var(--chip-emerald);
+  color: var(--color-primary);
+}
+
+.tileIcon.toneDown {
+  background: var(--chip-cyan);
+  color: var(--color-cyan);
+}
+
+.tileIcon.toneWarn {
+  background: var(--chip-amber);
+  color: var(--color-amber);
+}
+
+.tileValue.toneNeutral {
+  color: var(--text-primary);
+}
+
+.tileValue.toneUp {
+  color: var(--color-primary);
+}
+
+.tileValue.toneDown {
+  color: var(--color-cyan);
+}
+
+.tileValue.toneWarn {
+  color: var(--color-amber);
+}
+
+/* Shared panel header (eyebrow + heading) */
+.panelEyebrow {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.panelHeading {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+}
+
+/* Generic section card padding */
+.cardPad {
+  padding: 1.1rem;
+}
+
+/* Two-column layout: today + adherence */
+.twoColSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 1rem;
+}
+
+.todayHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.9rem;
+}
+
+.todayLabel {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.viewPlanLink {
+  height: fit-content;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  font-weight: 800;
+}
+
+/* Progress ring */
+.ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ringContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ringValue {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.ringCaption {
+  display: block;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Today: card-per-exercise list */
+.exerciseList {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.exerciseCard {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.exerciseRank {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.exerciseRingCol {
+  flex-shrink: 0;
+}
+
+.exerciseInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.exerciseName {
+  font-weight: 850;
+  color: var(--text-primary);
+}
+
+.exerciseMeta {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}
+
+.exerciseLoad {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.exerciseLoadValue {
+  font-weight: 900;
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.exerciseLoadLabel {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+  padding: 2rem 1.25rem;
+  border: 1px dashed var(--border-subtle);
+  background: var(--bg-surface-elevated);
+}
+
+.emptyStateIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 0.35rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--color-primary);
+}
+
+.emptyStateTitle {
+  font-weight: 850;
+  color: var(--text-primary);
+}
+
+.emptyStateMessage {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.emptyStateAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: #052b20;
+  background: var(--color-primary);
+}
+
+/* Adherence panel */
+.adherenceCard {
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.progressItem {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.progressRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.82rem;
+}
+
+.progressLabel {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.progressValue {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.progressTrack {
+  height: 8px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.progressFill {
+  height: 100%;
+}
+
+.progressFillGood {
+  background: var(--color-primary);
+}
+
+.progressValueWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.progressPercent {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.progressPercentGood {
+  color: var(--color-primary);
+}
+
+.progressPercentWarn {
+  color: var(--color-amber);
+}
+
+.progressNote {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.adherenceDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0.2rem 0;
+}
+
+.adherenceSubheader {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  margin-bottom: -0.3rem;
+}
+
+/* Anchor lifts + Next section */
+.threeColSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+  gap: 1rem;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.sectionTitleRow h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.anchorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.65rem;
+}
+
+.anchorCard {
+  padding: 0.85rem;
+  background: var(--bg-surface-elevated);
+}
+
+.anchorCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.anchorName {
+  color: var(--text-primary);
+  font-weight: 850;
+}
+
+.anchorBody {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.anchorRingValue {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.anchorValue {
+  color: var(--color-primary);
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+
+.anchorNote {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+
+
+.nextCard {
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.nextCard h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.nextItem {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.nextFooter {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.nextFooterValue {
+  color: var(--text-primary);
+}
+
+/* Skeleton layout scaffolding */
+.skeletonHeaderCol {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.skeletonMetricTile {
+  padding: 0.9rem 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-height: 92px;
+}
+
+.skeletonMetricIcon {
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.skeletonMetricBody {
+  flex: 1;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.skeletonRowsCard {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.skeletonSideCard {
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.skeletonProgressItem {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.skeletonProgressRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.skeletonAnchorGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.65rem;
+}
+
+.skeletonAnchorCard {
+  padding: 0.85rem;
+  background: var(--bg-surface-elevated);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.skeletonNextCard {
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.skeletonNextFooter {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.75rem;
+}

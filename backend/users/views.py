@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, UserProfile
-from .serializers import UserSerializer, RegisterSerializer, UserProfileSerializer
+from .serializers import UserSerializer, RegisterSerializer, UserProfileSerializer, ChangePasswordSerializer
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -42,3 +42,13 @@ class MeView(APIView):
             user_serializer.save()
             return Response(user_serializer.data)
         return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail': 'Password updated successfully.'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

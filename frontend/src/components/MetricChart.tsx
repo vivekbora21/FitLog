@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import styles from './MetricChart.module.css';
 
 export interface DataPoint {
   label: string;
@@ -40,8 +41,8 @@ export const MetricChart: React.FC<MetricChartProps> = ({
 
   if (!data || data.length === 0) {
     return (
-      <div style={{ height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '0.5rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{emptyMessage}</span>
+      <div className={styles.emptyState} style={{ height }}>
+        <span className={styles.emptyMessage}>{emptyMessage}</span>
       </div>
     );
   }
@@ -84,34 +85,34 @@ export const MetricChart: React.FC<MetricChartProps> = ({
   const activePoint = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div style={{ width: '100%', position: 'relative' }}>
+    <div className={styles.wrap}>
       {(title || subtitle || activePoint) && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div className={styles.header}>
           <div>
-            {title && <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{title}</h4>}
-            {subtitle && <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>{subtitle}</p>}
+            {title && <h4 className={styles.title}>{title}</h4>}
+            {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
           </div>
           {activePoint ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', padding: '4px 10px', borderRadius: '6px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{activePoint.label}:</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 850, color }}>{activePoint.value} {unit}</span>
+            <div className={styles.tooltip}>
+              <span className={styles.tooltipLabel}>{activePoint.label}:</span>
+              <span className={styles.tooltipValue} style={{ color }}>{activePoint.value} {unit}</span>
               {activePoint.sublabel && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', borderLeft: '1px solid var(--border-subtle)', paddingLeft: '8px' }}>
+                <span className={styles.tooltipSublabel}>
                   {activePoint.sublabel}
                 </span>
               )}
             </div>
           ) : targetValue !== undefined && targetLabel ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-              <span style={{ width: 14, height: 2, background: targetColor, display: 'inline-block', borderTop: '2px dashed ' + targetColor }} />
+            <div className={styles.legend}>
+              <span className={styles.legendSwatch} style={{ background: targetColor, borderTop: '2px dashed ' + targetColor }} />
               <span>{targetLabel}: <strong>{targetValue} {unit}</strong></span>
             </div>
           ) : null}
         </div>
       )}
 
-      <div style={{ width: '100%', overflowX: 'auto' }}>
-        <svg viewBox={`0 0 ${chartWidth} ${height}`} style={{ width: '100%', height, overflow: 'visible', display: 'block' }}>
+      <div className={styles.svgWrap}>
+        <svg viewBox={`0 0 ${chartWidth} ${height}`} className={styles.svg} style={{ height }}>
           <defs>
             <linearGradient id={`grad-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={color} stopOpacity="0.25" />
@@ -189,7 +190,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({
                     fill="#FFFFFF"
                     stroke={color}
                     strokeWidth={hoverIndex === idx ? 3.5 : 2.2}
-                    style={{ cursor: 'pointer', transition: 'all 150ms ease' }}
+                    className={styles.dataPoint}
                     onMouseEnter={() => setHoverIndex(idx)}
                     onMouseLeave={() => setHoverIndex(null)}
                   />
@@ -213,7 +214,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({
                     height={barHeight}
                     rx="5"
                     fill={isHovered ? color : `${color}dd`}
-                    style={{ cursor: 'pointer', transition: 'all 150ms ease' }}
+                    className={styles.dataPoint}
                     onMouseEnter={() => setHoverIndex(idx)}
                     onMouseLeave={() => setHoverIndex(null)}
                   />
@@ -233,6 +234,25 @@ export const MetricChart: React.FC<MetricChartProps> = ({
               );
             })
           )}
+
+          {/* Hover capture columns - wide invisible hit targets spanning the full chart height */}
+          {points.map((p, idx) => {
+            const prevX = idx > 0 ? (p.x + points[idx - 1].x) / 2 : paddingLeft;
+            const nextX = idx < points.length - 1 ? (p.x + points[idx + 1].x) / 2 : chartWidth - paddingRight;
+            return (
+              <rect
+                key={`hover-${idx}`}
+                x={prevX}
+                y={paddingTop}
+                width={Math.max(0, nextX - prevX)}
+                height={height - paddingTop - paddingBottom}
+                fill="transparent"
+                className={styles.hoverTarget}
+                onMouseEnter={() => setHoverIndex(idx)}
+                onMouseLeave={() => setHoverIndex(null)}
+              />
+            );
+          })}
 
           {/* X Axis Labels */}
           {points.map((p, idx) => {

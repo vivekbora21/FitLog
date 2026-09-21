@@ -47,20 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (loading || !user) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--bg-base)',
-          color: 'var(--text-secondary)',
-        }}
-      >
-        Loading...
-      </div>
-    );
+    return <div className="full-page-loader">Loading...</div>;
   }
 
   return (

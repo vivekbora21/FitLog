@@ -1,17 +1,41 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Activity, ArrowRight, CheckCircle2, Droplets, Scale, Trophy } from 'lucide-react';
+import {
+  Activity,
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Droplets,
+  Dumbbell,
+  Ruler,
+  Scale,
+  SlidersHorizontal,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react';
 import { api } from '@/lib/api';
+import { JourneyPacingData, DashboardAdherence } from '@/lib/types';
 import { DashboardCharts, DashboardTrends } from '@/components/DashboardCharts';
+import { Card } from '@/components/ui/Card';
+import { RightPathCard } from '@/components/RightPathCard';
+import { PlanSelectorModal } from '@/components/PlanSelectorModal';
+import styles from './page.module.css';
 
 type DashboardStats = {
   workouts_this_week?: number;
+  workouts_this_month?: number;
+  weekly_workouts_target?: number;
   total_volume_kg_week?: number;
   nutrition?: Record<string, number>;
   recent_prs?: Array<{ exercise: string; max_weight_kg: number; reps: number; estimated_1rm: number }>;
-  journey?: Record<string, number | null>;
+  journey?: Record<string, any>;
+  journey_pacing?: JourneyPacingData;
+  adherence?: DashboardAdherence;
   trends?: DashboardTrends;
 };
 
@@ -43,33 +67,252 @@ const fmt = (value: unknown, suffix = '') => {
 
 const pct = (actual = 0, target = 1) => Math.min(100, Math.round((actual / Math.max(target, 1)) * 100));
 
-function MetricBlock({ label, value, note, tone = 'neutral' }: { label: string; value: string; note?: string; tone?: 'neutral' | 'up' | 'down' | 'warn' }) {
-  const colors = {
-    neutral: 'var(--text-primary)',
-    up: 'var(--color-primary)',
-    down: '#0EA5E9',
-    warn: '#D97706',
-  };
+type MetricTone = 'neutral' | 'up' | 'down' | 'warn';
+
+const TONE_CLASS: Record<MetricTone, { tone: string; TrendIcon: typeof TrendingUp | null }> = {
+  neutral: { tone: styles.toneNeutral, TrendIcon: null },
+  up: { tone: styles.toneUp, TrendIcon: TrendingUp },
+  down: { tone: styles.toneDown, TrendIcon: TrendingDown },
+  warn: { tone: styles.toneWarn, TrendIcon: TrendingUp },
+};
+
+function MetricTile({
+  icon: Icon,
+  label,
+  value,
+  note,
+  tone = 'neutral',
+}: {
+  icon: typeof Scale;
+  label: string;
+  value: string;
+  note?: string;
+  tone?: MetricTone;
+}) {
+  const { tone: toneClass, TrendIcon } = TONE_CLASS[tone];
   return (
-    <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', padding: '0.9rem 1rem', minHeight: 92 }}>
-      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
-      <div style={{ color: colors[tone], fontSize: '1.45rem', fontWeight: 850, marginTop: '0.35rem', lineHeight: 1.05 }}>{value}</div>
-      {note && <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginTop: '0.35rem' }}>{note}</div>}
+    <Card hoverable className={styles.tile}>
+      <div className={`${styles.tileIcon} ${toneClass}`}>
+        <Icon size={19} />
+      </div>
+      <div className={styles.tileBody}>
+        <div className={styles.tileLabel}>{label}</div>
+        <div className={`${styles.tileValue} ${toneClass}`}>
+          {TrendIcon && <TrendIcon size={15} />}
+          {value}
+        </div>
+        {note && <div className={styles.tileNote}>{note}</div>}
+      </div>
+    </Card>
+  );
+}
+
+function SkeletonBlock({ width, height, style }: { width?: string | number; height?: string | number; style?: CSSProperties }) {
+  return <div className="skeleton" style={{ width: width ?? '100%', height: height ?? 14, ...style }} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className={styles.page}>
+      <section className={styles.headerRow}>
+        <div className={styles.skeletonHeaderCol}>
+          <SkeletonBlock width={150} height={12} />
+          <SkeletonBlock width={220} height={30} />
+          <SkeletonBlock width={280} height={14} />
+        </div>
+        <div className={styles.headerActions}>
+          <SkeletonBlock width={110} height={40} />
+          <SkeletonBlock width={130} height={40} />
+        </div>
+      </section>
+
+      <section className={styles.metricGrid}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i} className={styles.skeletonMetricTile}>
+            <SkeletonBlock width={38} height={38} style={{ borderRadius: 10, flexShrink: 0 }} />
+            <div className={styles.skeletonMetricBody}>
+              <SkeletonBlock width="60%" height={10} />
+              <SkeletonBlock width="45%" height={22} />
+              <SkeletonBlock width="70%" height={10} />
+            </div>
+          </Card>
+        ))}
+      </section>
+
+      <section>
+        <Card className={styles.cardPad}>
+          <SkeletonBlock height={260} />
+        </Card>
+      </section>
+
+      <section className={styles.twoColSection}>
+        <Card className={styles.cardPad}>
+          <div className={styles.todayHeaderRow}>
+            <div className={styles.skeletonHeaderCol}>
+              <SkeletonBlock width={60} height={10} />
+              <SkeletonBlock width={180} height={22} />
+              <SkeletonBlock width={220} height={12} />
+            </div>
+            <SkeletonBlock width={100} height={36} />
+          </div>
+          <div className={styles.skeletonRowsCard}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonBlock key={i} height={58} />
+            ))}
+          </div>
+        </Card>
+
+        <Card className={styles.skeletonSideCard}>
+          <div className={styles.skeletonHeaderCol}>
+            <SkeletonBlock width={110} height={10} />
+            <SkeletonBlock width={90} height={20} />
+          </div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className={styles.skeletonProgressItem}>
+              <div className={styles.skeletonProgressRow}>
+                <SkeletonBlock width={70} height={12} />
+                <SkeletonBlock width={90} height={12} />
+              </div>
+              <SkeletonBlock height={8} />
+            </div>
+          ))}
+        </Card>
+      </section>
+
+      <section className={styles.threeColSection}>
+        <Card className={styles.cardPad}>
+          <SkeletonBlock width={260} height={20} style={{ marginBottom: '0.9rem' }} />
+          <div className={styles.skeletonAnchorGrid}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className={styles.skeletonAnchorCard}>
+                <SkeletonBlock width="70%" height={14} />
+                <SkeletonBlock width="55%" height={20} />
+                <SkeletonBlock width="90%" height={12} />
+              </Card>
+            ))}
+          </div>
+        </Card>
+
+        <Card className={styles.skeletonNextCard}>
+          <SkeletonBlock width={60} height={18} />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonBlock key={i} height={16} width="85%" />
+          ))}
+          <div className={styles.skeletonNextFooter}>
+            <SkeletonBlock width={140} height={14} />
+          </div>
+        </Card>
+      </section>
     </div>
   );
 }
 
-function ProgressLine({ label, actual, target, suffix = '' }: { label: string; actual: number; target: number; suffix?: string }) {
-  const width = pct(actual, target);
+function EmptyState({
+  icon: Icon,
+  title,
+  message,
+  actionHref,
+  actionLabel,
+}: {
+  icon: typeof Scale;
+  title: string;
+  message: string;
+  actionHref: string;
+  actionLabel: string;
+}) {
   return (
-    <div style={{ display: 'grid', gap: '0.4rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.82rem' }}>
-        <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{label}</span>
-        <span style={{ color: 'var(--text-primary)', fontWeight: 800 }}>{actual}{suffix} / {target}{suffix}</span>
+    <div className={styles.emptyState}>
+      <div className={styles.emptyStateIcon}>
+        <Icon size={22} />
       </div>
-      <div style={{ height: 8, background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)' }}>
-        <div style={{ width: `${width}%`, height: '100%', background: width >= 85 ? 'var(--color-primary)' : '#F59E0B' }} />
+      <div className={styles.emptyStateTitle}>{title}</div>
+      <p className={styles.emptyStateMessage}>{message}</p>
+      <Link href={actionHref} className={styles.emptyStateAction}>
+        {actionLabel} <ArrowRight size={14} />
+      </Link>
+    </div>
+  );
+}
+
+function ProgressRing({
+  percent,
+  size = 48,
+  strokeWidth = 4,
+  color = 'var(--color-primary)',
+  children,
+}: {
+  percent: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+  children?: React.ReactNode;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, percent));
+  const offset = circumference - (clamped / 100) * circumference;
+  return (
+    <div className={styles.ring} style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border-subtle)" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <div className={styles.ringContent}>{children}</div>
+    </div>
+  );
+}
+
+function ProgressLine({
+  label,
+  actual,
+  target,
+  suffix = '',
+  percent,
+  note,
+}: {
+  label: string;
+  actual: number;
+  target: number;
+  suffix?: string;
+  percent?: number;
+  note?: string;
+}) {
+  const displayPercent = typeof percent === 'number'
+    ? Math.min(100, Math.max(0, Math.round(percent)))
+    : pct(actual, target);
+  const isGood = displayPercent >= 85;
+
+  return (
+    <div className={styles.progressItem}>
+      <div className={styles.progressRow}>
+        <span className={styles.progressLabel}>{label}</span>
+        <div className={styles.progressValueWrap}>
+          <span className={styles.progressValue}>
+            {actual}{suffix} / {target}{suffix}
+          </span>
+          <span className={`${styles.progressPercent} ${isGood ? styles.progressPercentGood : styles.progressPercentWarn}`}>
+            ({displayPercent}%)
+          </span>
+        </div>
       </div>
+      <div className={styles.progressTrack}>
+        <div
+          className={`${styles.progressFill} ${isGood ? styles.progressFillGood : styles.progressFillWarn}`}
+          style={{ width: `${displayPercent}%` }}
+        />
+      </div>
+      {note && <div className={styles.progressNote}>{note}</div>}
     </div>
   );
 }
@@ -77,142 +320,262 @@ function ProgressLine({ label, actual, target, suffix = '' }: { label: string; a
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [today, setToday] = useState<TodayPayload | null>(null);
+  const [pacingData, setPacingData] = useState<JourneyPacingData | null>(null);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const loadData = async () => {
+    try {
+      const [dashboard, current, pacing] = await Promise.all([
+        api.getDashboardStats(),
+        api.getTodaysWorkout(),
+        api.getJourneyPacingStatus(),
+      ]);
+      setStats(dashboard);
+      setToday(current);
+      setPacingData(pacing);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    Promise.all([api.getDashboardStats(), api.getTodaysWorkout()])
-      .then(([dashboard, current]) => {
-        setStats(dashboard);
-        setToday(current);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    loadData();
   }, []);
 
   const journey = stats?.journey || {};
   const nutrition = stats?.nutrition || {};
   const routine = today?.today?.routine_details;
   const anchorLifts = useMemo(() => (stats?.recent_prs || []).slice(0, 5), [stats]);
-  const programDay = Number(journey.program_day || today?.program?.current_day || 1);
-  const programLength = Number(journey.program_length || today?.program?.duration_days || 60);
-  const programPct = Number(journey.program_completion_percent || pct(programDay - 1, programLength));
+  const programDay = Number(pacingData?.current_day || journey.program_day || today?.program?.current_day || 1);
+  const programLength = Number(pacingData?.duration_days || journey.program_length || today?.program?.duration_days || 60);
+  const programPct = Number(pacingData ? Math.round(((programDay - 1) / Math.max(programLength, 1)) * 100) : (journey.program_completion_percent || pct(programDay - 1, programLength)));
 
   if (loading) {
-    return <div style={{ padding: '3rem 0', color: 'var(--text-secondary)' }}>Loading the journey dashboard...</div>;
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1.35rem' }}>
-      <section style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+    <div className={styles.page}>
+      <section className={styles.headerRow}>
         <div>
-          <div style={{ color: 'var(--color-primary)', fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase' }}>FitLog 60-Day Journey</div>
-          <h1 style={{ margin: '0.25rem 0 0', fontSize: '2rem', lineHeight: 1.05 }}>Dashboard</h1>
-          <p style={{ margin: '0.45rem 0 0', color: 'var(--text-secondary)' }}>Plan, train, log, measure, review, progress.</p>
+          <div className={styles.eyebrow}>
+            {pacingData?.mode_label || (journey as any)?.mode_label || 'FitLog'} · {programLength}-Day Journey
+          </div>
+          <h1 className={styles.title}>Dashboard</h1>
+          <p className={styles.subtitle}>Plan, train, log, measure, review, progress.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <Link href="/app/daily" style={{ padding: '0.7rem 0.9rem', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', fontWeight: 800 }}>Log Daily</Link>
-          <Link href="/app/workouts/active" style={{ padding: '0.7rem 0.9rem', background: 'var(--color-primary)', color: '#052b20', fontWeight: 900 }}>Start Today <ArrowRight size={15} style={{ verticalAlign: 'middle' }} /></Link>
+        <div className={styles.headerActions}>
+          <button
+            type="button"
+            onClick={() => setIsPlanModalOpen(true)}
+            className={styles.actionSecondary}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}
+          >
+            <SlidersHorizontal size={15} /> Plan &amp; Mode
+          </button>
+          <Link href="/app/daily" className={styles.actionSecondary}>Log Daily</Link>
+          <Link href="/app/workouts/active" className={styles.actionPrimary}>Start Today <ArrowRight size={15} /></Link>
         </div>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.65rem' }}>
-        <MetricBlock label="Current weight" value={fmt(journey.current_weight, ' kg')} note={`Start ${fmt(journey.starting_weight, ' kg')}`} tone="down" />
-        <MetricBlock label="Weight change" value={fmt(journey.weight_change, ' kg')} note={`7-day avg ${fmt(journey.seven_day_average, ' kg')}`} tone={Number(journey.weight_change || 0) <= 0 ? 'down' : 'warn'} />
-        <MetricBlock label="Weekly change" value={fmt(journey.weekly_weight_change, ' kg')} note="Rolling average basis" tone={Number(journey.weekly_weight_change || 0) <= 0 ? 'down' : 'warn'} />
-        <MetricBlock label="Current waist" value={fmt(journey.current_waist, ' cm')} note={`Change ${fmt(journey.waist_change, ' cm')}`} tone="down" />
-        <MetricBlock label="Program progress" value={`${programPct}%`} note={`Day ${programDay} of ${programLength}`} tone="up" />
+      {/* Mission Control Right Path Card */}
+      <section>
+        <RightPathCard
+          pacing={pacingData || (stats?.journey_pacing as any) || null}
+          onOpenPlanSelector={() => setIsPlanModalOpen(true)}
+        />
+      </section>
+
+      <section className={styles.metricGrid}>
+        <MetricTile icon={Scale} label="Current weight" value={fmt(journey.current_weight, ' kg')} note={`Start ${fmt(journey.starting_weight, ' kg')}`} tone="neutral" />
+        <MetricTile icon={TrendingDown} label="Weight change" value={fmt(journey.weight_change, ' kg')} note={`7-day avg ${fmt(journey.seven_day_average, ' kg')}`} tone={Number(journey.weight_change || 0) <= 0 ? 'down' : 'warn'} />
+        <MetricTile icon={Activity} label="Weekly change" value={fmt(journey.weekly_weight_change, ' kg')} note="Rolling average basis" tone={Number(journey.weekly_weight_change || 0) <= 0 ? 'down' : 'warn'} />
+        <MetricTile icon={Ruler} label="Current waist" value={fmt(journey.current_waist, ' cm')} note={`Change ${fmt(journey.waist_change, ' cm')}`} tone="down" />
+        <MetricTile icon={Target} label="Program progress" value={`${programPct}%`} note={`Day ${programDay} of ${programLength}`} tone="up" />
       </section>
 
       <section>
         <DashboardCharts
           trends={stats?.trends}
-          targetWeight={74.0}
+          targetWeight={pacingData?.target_weight || pacingData?.velocity?.expected_final_weight || journey.target_weight || 74.0}
           dailyCaloriesTarget={Number(nutrition.calories_target || 2160)}
+          programDuration={programLength}
+          modeLabel={pacingData?.mode_label || journey.mode_label || 'Goal'}
         />
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(320px, 0.65fr)', gap: '1rem' }}>
-        <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', padding: '1.1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.9rem' }}>
+      <section className={styles.twoColSection}>
+        <Card className={styles.cardPad}>
+          <div className={styles.todayHeaderRow}>
             <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Today</div>
-              <h2 style={{ margin: '0.25rem 0 0', fontSize: '1.25rem' }}>{routine?.name || today?.today?.label || 'No active workout'}</h2>
-              <p style={{ margin: '0.35rem 0 0', color: 'var(--text-secondary)', fontSize: '0.86rem' }}>Program Day {today?.today?.day_number || programDay} · {today?.today?.status || 'UPCOMING'}</p>
+              <div className={styles.panelEyebrow}>Today</div>
+              <h2 className={styles.panelHeading}>{routine?.name || today?.today?.label || 'No active workout'}</h2>
+              <p className={styles.todayLabel}>Program Day {today?.today?.day_number || programDay} · {today?.today?.status || 'UPCOMING'}</p>
             </div>
-            <Link href="/app/workouts/plan" style={{ height: 'fit-content', padding: '0.6rem 0.75rem', border: '1px solid var(--border-subtle)', fontWeight: 800 }}>View Plan</Link>
+            <Link href="/app/workouts/plan" className={styles.viewPlanLink}>View Plan</Link>
           </div>
 
-          <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-              <thead>
-                <tr style={{ color: 'var(--text-muted)', textAlign: 'left', fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '0.55rem 0' }}>Exercise</th>
-                  <th>Sets</th>
-                  <th>Target reps</th>
-                  <th>RPE</th>
-                  <th>Suggested</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(routine?.exercises || []).slice(0, 7).map((exercise) => (
-                  <tr key={exercise.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '0.68rem 0', fontWeight: 800 }}>{exercise.exercise_name}</td>
-                    <td>{exercise.target_sets}</td>
-                    <td>{exercise.target_reps}</td>
-                    <td>{exercise.target_rpe || 8}</td>
-                    <td>{exercise.suggested_weight_kg ? `${exercise.suggested_weight_kg} kg` : '--'}</td>
-                  </tr>
-                ))}
-                {!routine?.exercises?.length && (
-                  <tr><td colSpan={5} style={{ padding: '1rem 0', color: 'var(--text-secondary)' }}>Seed or assign a 60-day program to populate today.</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className={styles.exerciseList}>
+            {(routine?.exercises || []).slice(0, 7).map((exercise, index) => {
+              const rpe = exercise.target_rpe || 8;
+              const rpePct = Math.round((rpe / 10) * 100);
+              const ringColor = rpe >= 9 ? 'var(--color-amber)' : 'var(--color-primary)';
+              return (
+                <div key={exercise.id} className={styles.exerciseCard}>
+                  <div className={styles.exerciseRank}>{index + 1}</div>
+                  <div className={styles.exerciseRingCol}>
+                    <ProgressRing percent={rpePct} size={44} strokeWidth={4} color={ringColor}>
+                      <span className={styles.ringValue}>{rpe}</span>
+                    </ProgressRing>
+                    <span className={styles.ringCaption}>RPE</span>
+                  </div>
+                  <div className={styles.exerciseInfo}>
+                    <div className={styles.exerciseName}>{exercise.exercise_name}</div>
+                    <div className={styles.exerciseMeta}>{exercise.target_sets} sets &times; {exercise.target_reps} reps</div>
+                  </div>
+                  <div className={styles.exerciseLoad}>
+                    <div className={styles.exerciseLoadValue}>{exercise.suggested_weight_kg ? `${exercise.suggested_weight_kg} kg` : '--'}</div>
+                    <div className={styles.exerciseLoadLabel}>Suggested</div>
+                  </div>
+                </div>
+              );
+            })}
+            {!routine?.exercises?.length && (
+              <EmptyState
+                icon={CalendarDays}
+                title="No program assigned yet"
+                message="Start or select a journey program to see today's workout here."
+                actionHref="/app/workouts/plan"
+                actionLabel="View Plan"
+              />
+            )}
           </div>
-        </div>
+        </Card>
 
-        <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', padding: '1.1rem', display: 'grid', gap: '0.95rem' }}>
+        <Card className={styles.adherenceCard}>
           <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Daily Adherence</div>
-            <h2 style={{ margin: '0.25rem 0 0', fontSize: '1.15rem' }}>Targets</h2>
+            <div className={styles.panelEyebrow}>Consistency &amp; Nutrition</div>
+            <h2 className={styles.panelHeading}>Adherence Targets</h2>
           </div>
-          <ProgressLine label="Calories" actual={Number(nutrition.calories_consumed || 0)} target={Number(nutrition.calories_target || 1)} />
-          <ProgressLine label="Protein" actual={Number(nutrition.protein_consumed || 0)} target={Number(nutrition.protein_target || 1)} suffix="g" />
-          <ProgressLine label="Water" actual={Math.round(Number(nutrition.water_consumed_ml || 0) / 250)} target={Math.round(Number(nutrition.water_target_ml || 3000) / 250)} suffix=" cups" />
-          <ProgressLine label="Cardio" actual={Number(journey.cardio_minutes || 0)} target={Number(journey.cardio_target || 120)} suffix=" min" />
-          <ProgressLine label="Workouts" actual={Number(stats?.workouts_this_week || 0)} target={5} />
-        </div>
+
+          <div className={styles.adherenceSubheader}>Today&apos;s Nutrition</div>
+          <ProgressLine
+            label="Calories"
+            actual={Number(nutrition.calories_consumed || 0)}
+            target={Number(nutrition.calories_target || 1)}
+            percent={stats?.adherence?.calories?.percent}
+          />
+          <ProgressLine
+            label="Protein"
+            actual={Number(nutrition.protein_consumed || 0)}
+            target={Number(nutrition.protein_target || 1)}
+            suffix="g"
+            percent={stats?.adherence?.protein?.percent}
+          />
+          <ProgressLine
+            label="Water"
+            actual={stats?.adherence?.water?.actual_cups ?? Math.round(Number(nutrition.water_consumed_ml || 0) / 250)}
+            target={stats?.adherence?.water?.target_cups ?? Math.round(Number(nutrition.water_target_ml || 3000) / 250)}
+            suffix=" cups"
+            percent={stats?.adherence?.water?.percent}
+          />
+
+          <div className={styles.adherenceDivider} />
+          <div className={styles.adherenceSubheader}>Journey &amp; Cardio Consistency</div>
+
+          {pacingData?.has_program && (pacingData?.adherence || stats?.adherence?.workout) ? (
+            <ProgressLine
+              label="Workout Adherence"
+              actual={pacingData?.adherence?.completed_sessions ?? stats?.adherence?.workout?.actual ?? 0}
+              target={pacingData?.adherence?.scheduled_sessions ?? stats?.adherence?.workout?.target ?? 1}
+              suffix=" sessions"
+              percent={pacingData?.adherence?.adherence_pct ?? stats?.adherence?.workout?.percent}
+              note={`Program pace · ${stats?.workouts_this_week || 0} of ${stats?.weekly_workouts_target || 5} logged this week`}
+            />
+          ) : (
+            <ProgressLine
+              label="Weekly Workouts"
+              actual={Number(stats?.workouts_this_week || 0)}
+              target={Number(stats?.weekly_workouts_target || 5)}
+              suffix=" sessions"
+              percent={stats?.adherence?.weekly_workouts?.percent}
+              note="Weekly target frequency"
+            />
+          )}
+
+          <ProgressLine
+            label="Cardio (Weekly)"
+            actual={Number(journey.cardio_minutes || 0)}
+            target={Number(journey.cardio_target || 120)}
+            suffix=" min"
+            percent={stats?.adherence?.cardio?.percent}
+            note="Rolling 7-day aerobic volume"
+          />
+        </Card>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 0.42fr)', gap: '1rem' }}>
-        <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', padding: '1.1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.9rem' }}>
+      <section className={styles.threeColSection}>
+        <Card className={styles.cardPad}>
+          <div className={styles.sectionTitleRow}>
             <Trophy size={18} color="var(--color-primary)" />
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Key Compound Strength Progression Tracker</h2>
+            <h2>Key Compound Strength Progression Tracker</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.65rem' }}>
-            {anchorLifts.map((lift) => (
-              <div key={lift.exercise} style={{ border: '1px solid var(--border-subtle)', padding: '0.85rem', background: 'var(--bg-surface-elevated)' }}>
-                <div style={{ color: 'var(--text-primary)', fontWeight: 850 }}>{lift.exercise}</div>
-                <div style={{ color: 'var(--color-primary)', fontWeight: 900, fontSize: '1.15rem', marginTop: '0.35rem' }}>{lift.max_weight_kg} kg x {lift.reps}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginTop: '0.35rem' }}>Estimated 1RM {Math.round(lift.estimated_1rm)} kg · progress next by reps first</div>
-              </div>
-            ))}
-            {!anchorLifts.length && <div style={{ color: 'var(--text-secondary)' }}>Complete workouts to build the anchor lift tracker.</div>}
+          <div className={styles.anchorGrid}>
+            {anchorLifts.map((lift) => {
+              const intensityPct = lift.estimated_1rm ? Math.round((lift.max_weight_kg / lift.estimated_1rm) * 100) : 0;
+              return (
+                <Card key={lift.exercise} hoverable className={styles.anchorCard}>
+                  <div className={styles.anchorCardHeader}>
+                    <div className={styles.anchorName}>{lift.exercise}</div>
+                    <TrendingUp size={15} color="var(--color-primary)" />
+                  </div>
+                  <div className={styles.anchorBody}>
+                    <ProgressRing percent={intensityPct} size={54} strokeWidth={5}>
+                      <span className={styles.anchorRingValue}>{intensityPct}%</span>
+                    </ProgressRing>
+                    <div>
+                      <div className={styles.anchorValue}>{lift.max_weight_kg} kg &times; {lift.reps}</div>
+                      <div className={styles.anchorNote}>Est. 1RM {Math.round(lift.estimated_1rm)} kg</div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+            {!anchorLifts.length && (
+              <EmptyState
+                icon={Dumbbell}
+                title="No lifts logged yet"
+                message="Complete a workout to start building your strength progression."
+                actionHref="/app/workouts/active"
+                actionLabel="Start Today"
+              />
+            )}
           </div>
-        </div>
+        </Card>
 
-        <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', padding: '1.1rem', display: 'grid', gap: '0.75rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Next</h2>
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', color: 'var(--text-secondary)' }}><CheckCircle2 size={18} color="var(--color-primary)" /> Finish today&apos;s prescribed sets.</div>
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', color: 'var(--text-secondary)' }}><Scale size={18} color="#0EA5E9" /> Log morning weight in Daily Log.</div>
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', color: 'var(--text-secondary)' }}><Droplets size={18} color="#0EA5E9" /> Hit hydration before late evening.</div>
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', color: 'var(--text-secondary)' }}><Activity size={18} color="#D97706" /> Review weekly trend before adjusting.</div>
-          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-            Weekly volume: <strong style={{ color: 'var(--text-primary)' }}>{fmt(stats?.total_volume_kg_week, ' kg')}</strong>
+        <Card className={styles.nextCard}>
+          <h2>Next</h2>
+          <div className={styles.nextItem}><CheckCircle2 size={18} color="var(--color-primary)" /> Finish today&apos;s prescribed sets.</div>
+          <div className={styles.nextItem}><Scale size={18} color="#0EA5E9" /> Log morning weight in Daily Log.</div>
+          <div className={styles.nextItem}><Droplets size={18} color="#0EA5E9" /> Hit hydration before late evening.</div>
+          <div className={styles.nextItem}><Activity size={18} color="#D97706" /> Review weekly trend before adjusting.</div>
+          <div className={styles.nextFooter}>
+            Weekly volume: <strong className={styles.nextFooterValue}>{fmt(stats?.total_volume_kg_week, ' kg')}</strong>
           </div>
-        </div>
+        </Card>
       </section>
+
+      <PlanSelectorModal
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+        }}
+        initialWeight={pacingData?.velocity?.rolling_7_avg || Number(journey.current_weight) || pacingData?.velocity?.start_weight || 75.0}
+      />
     </div>
   );
 }
