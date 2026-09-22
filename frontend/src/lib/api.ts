@@ -303,6 +303,40 @@ class ApiClient {
     return this.request<any>(`/progress/prs/${query}`);
   }
 
+  // Daily Lifestyle, Steps & Sleep Log
+  async getDailyLogs(clientId?: string) {
+    const query = clientId ? `?client_id=${clientId}` : '';
+    return this.request<any>(`/progress/daily/${query}`);
+  }
+
+  async getDailyLogForDate(dateStr: string) {
+    const data = await this.request<any[]>(`/progress/daily/?date=${dateStr}`);
+    return data && data.length > 0 ? data[0] : null;
+  }
+
+  async logDaily(data: {
+    date?: string;
+    steps?: number | null;
+    sleep_hours?: number | null;
+    sleep_quality?: number | null;
+    energy_level?: number | null;
+    recovery_notes?: string;
+  }) {
+    const today = new Date().toISOString().split('T')[0];
+    return this.request<any>('/progress/daily/', {
+      method: 'POST',
+      body: JSON.stringify({
+        date: data.date || today,
+        steps: data.steps != null ? Number(data.steps) : null,
+        sleep_hours: data.sleep_hours != null ? Number(data.sleep_hours) : null,
+        sleep_quality: data.sleep_quality != null ? Number(data.sleep_quality) : null,
+        energy_level: data.energy_level != null ? Number(data.energy_level) : null,
+        recovery_notes: data.recovery_notes || '',
+      }),
+    });
+  }
+
+
   // Notifications
   async getNotifications() {
     return this.request<any>('/notifications/');

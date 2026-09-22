@@ -36,8 +36,17 @@ type DashboardStats = {
   journey?: Record<string, any>;
   journey_pacing?: JourneyPacingData;
   adherence?: DashboardAdherence;
+  daily_log?: {
+    steps?: number;
+    sleep_hours?: number;
+    sleep_quality?: number | null;
+    energy_level?: number | null;
+    recovery_notes?: string;
+  };
+  weekly_review?: any[];
   trends?: DashboardTrends;
 };
+
 
 type TodayPayload = {
   program?: { current_day: number; duration_days: number } | null;
@@ -334,6 +343,9 @@ export default function DashboardPage() {
       setStats(dashboard);
       setToday(current);
       setPacingData(pacing);
+      if (pacing && !pacing.has_program) {
+        setIsPlanModalOpen(true);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -514,7 +526,29 @@ export default function DashboardPage() {
             percent={stats?.adherence?.cardio?.percent}
             note="Rolling 7-day aerobic volume"
           />
+
+          <div className={styles.adherenceDivider} />
+          <div className={styles.adherenceSubheader}>Daily Lifestyle &amp; Recovery</div>
+
+          <ProgressLine
+            label="Daily Steps"
+            actual={Number(stats?.daily_log?.steps || stats?.adherence?.steps?.actual || 0)}
+            target={Number(stats?.adherence?.steps?.target || 10000)}
+            suffix=" steps"
+            percent={stats?.adherence?.steps?.percent}
+            note="Pillar 9 NEAT standard (8,000–10,000)"
+          />
+
+          <ProgressLine
+            label="Nightly Sleep"
+            actual={Number(stats?.daily_log?.sleep_hours || stats?.adherence?.sleep?.actual || 0)}
+            target={Number(stats?.adherence?.sleep?.target || 8.0)}
+            suffix=" hrs"
+            percent={stats?.adherence?.sleep?.percent}
+            note="Pillar 7 recovery standard (7.5–8.5 hrs)"
+          />
         </Card>
+
       </section>
 
       <section className={styles.threeColSection}>
@@ -570,9 +604,17 @@ export default function DashboardPage() {
 
       <PlanSelectorModal
         isOpen={isPlanModalOpen}
-        onClose={() => setIsPlanModalOpen(false)}
+        dismissible={Boolean(pacingData?.has_program)}
+        onClose={() => {
+          if (pacingData?.has_program) {
+            setIsPlanModalOpen(false);
+          }
+        }}
         onSuccess={() => {
           loadData();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('fitlog:journey-updated'));
+          }
         }}
         initialWeight={pacingData?.velocity?.rolling_7_avg || Number(journey.current_weight) || pacingData?.velocity?.start_weight || 75.0}
       />

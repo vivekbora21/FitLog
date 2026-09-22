@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Flame,
@@ -23,6 +23,8 @@ interface PlanSelectorModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialWeight?: number;
+  /** When false, the modal cannot be dismissed without starting a plan (no close button, backdrop click, or Cancel). Used for the mandatory onboarding gate. */
+  dismissible?: boolean;
 }
 
 interface BlueprintOption {
@@ -94,6 +96,7 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
   onClose,
   onSuccess,
   initialWeight = 77.0,
+  dismissible = true,
 }) => {
   const [activeTab, setActiveTab] = useState<'blueprints' | 'custom'>('blueprints');
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>('CUT_60');
@@ -115,6 +118,18 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
     const weeks = customDays / 7.0;
     return Number((delta / weeks).toFixed(2));
   }, [startWeight, targetWeight, customDays]);
+
+  // Close on Escape only if dismissible
+  useEffect(() => {
+    if (!isOpen || !dismissible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, dismissible, onClose]);
 
   if (!isOpen) return null;
 
@@ -158,19 +173,30 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
   };
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} onClick={dismissible ? onClose : undefined}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={styles.header}>
           <div>
-            <h2 className={styles.title}>Choose Your Workout Plan & Mode</h2>
+            {!dismissible && (
+              <span className={`${styles.bpModeBadge} ${styles.initialBadge}`}>
+                INITIAL JOURNEY SETUP
+              </span>
+            )}
+            <h2 className={styles.title}>
+              {dismissible ? 'Choose Your Workout Plan & Mode' : 'Welcome to FitLog — Choose Your Journey Plan'}
+            </h2>
             <p className={styles.subtitle}>
-              Align your training split, velocity corridor, and copilot tracking with your goal.
+              {dismissible
+                ? 'Align your training split, velocity corridor, and copilot tracking with your goal.'
+                : 'Select an initial blueprint or configure custom goals to calibrate your workout routines, nutrition targets, and tracking.'}
             </p>
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close modal">
-            <X size={20} />
-          </button>
+          {dismissible && (
+            <button className={styles.closeBtn} onClick={onClose} aria-label="Close modal">
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         {/* Navigation Tabs */}
@@ -374,9 +400,11 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
 
         {/* Footer */}
         <div className={styles.footer}>
-          <button className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
-            Cancel
-          </button>
+          {dismissible && (
+            <button className={styles.cancelBtn} onClick={onClose} disabled={submitting}>
+              Cancel
+            </button>
+          )}
           <button className={styles.submitBtn} onClick={handleSubmit} disabled={submitting}>
             <Play size={15} /> {submitting ? 'Starting Plan...' : 'Start This Journey'}
           </button>

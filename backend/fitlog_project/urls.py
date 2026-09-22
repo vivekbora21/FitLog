@@ -9,7 +9,7 @@ from memberships.views import GymMembershipViewSet, TrainerClientViewSet, GymInv
 from exercises.views import ExerciseViewSet, MuscleGroupViewSet, EquipmentTypeViewSet
 from workouts.views import WorkoutSessionViewSet, RoutineViewSet, AssignedWorkoutViewSet, CardioEntryViewSet
 from nutrition.views import NutritionDayView, MealEntryViewSet, MacroTargetView
-from progress.views import WeightEntryViewSet, BodyMeasurementViewSet, PersonalRecordViewSet
+from progress.views import WeightEntryViewSet, BodyMeasurementViewSet, PersonalRecordViewSet, DailyLogViewSet
 from notifications.views import NotificationViewSet
 from core.views import AuditLogViewSet
 from analytics.views import DashboardStatsView, JourneyPacingStatusView
@@ -30,6 +30,7 @@ router.register(r'nutrition/meals', MealEntryViewSet, basename='meal')
 router.register(r'progress/weight', WeightEntryViewSet, basename='weight')
 router.register(r'progress/measurements', BodyMeasurementViewSet, basename='measurement')
 router.register(r'progress/prs', PersonalRecordViewSet, basename='pr')
+router.register(r'progress/daily', DailyLogViewSet, basename='daily-log')
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'audit-logs', AuditLogViewSet, basename='audit-log')
 

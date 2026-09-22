@@ -3,9 +3,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
 from django.db import models
-from workouts.models import WorkoutSession, AssignedWorkout, CardioEntry, JourneyProgram
+from workouts.models import WorkoutSession, AssignedWorkout, CardioEntry, JourneyProgram, ProgramDay
 from nutrition.models import NutritionDay, MacroTarget
-from progress.models import PersonalRecord, WeightEntry, BodyMeasurement
+from progress.models import PersonalRecord, WeightEntry, BodyMeasurement, DailyLog
 from .pacing import calculate_journey_pacing, calculate_rolling_average
 
 class DashboardStatsView(APIView):
@@ -43,7 +43,7 @@ class DashboardStatsView(APIView):
             streak += 1
             check_date -= timedelta(days=1)
 
-        # Today's nutrition
+        # Today's nutrition & daily lifestyle log
         nutrition_day = NutritionDay.objects.filter(user=user, date=today).first()
         target, _ = MacroTarget.objects.get_or_create(user=user)
 
@@ -52,6 +52,14 @@ class DashboardStatsView(APIView):
         carbs_consumed = nutrition_day.total_carbs() if nutrition_day else 0
         fat_consumed = nutrition_day.total_fat() if nutrition_day else 0
         water_consumed = nutrition_day.water_consumed_ml if nutrition_day else 0
+
+        daily_log_today = DailyLog.objects.filter(user=user, date=today).first()
+        steps_today = daily_log_today.steps if daily_log_today and daily_log_today.steps is not None else 0
+        sleep_today = daily_log_today.sleep_hours if daily_log_today and daily_log_today.sleep_hours is not None else 0.0
+        sleep_quality_today = daily_log_today.sleep_quality if daily_log_today else None
+        energy_level_today = daily_log_today.energy_level if daily_log_today else None
+        recovery_notes_today = daily_log_today.recovery_notes if daily_log_today else ''
+
 
         # Pending assigned workout
         pending_assigned = AssignedWorkout.objects.filter(
@@ -210,7 +218,123 @@ class DashboardStatsView(APIView):
                 'percent': cardio_pct,
                 'unit': 'min',
             },
+            'steps': {
+                'label': 'Daily Steps',
+                'actual': steps_today,
+                'target': 10000,
+                'percent': min(100.0, round((steps_today / 10000) * 100.0, 1)),
+                'unit': 'steps',
+            },
+            'sleep': {
+                'label': 'Nightly Sleep',
+                'actual': sleep_today,
+                'target': 8.0,
+                'percent': min(100.0, round((sleep_today / 8.0) * 100.0, 1)),
+                'unit': 'hours',
+            },
         }
+
+        # Sheet 11: Automated Weekly Review & Adaptive Decision Protocol
+        weekly_review = []
+        if program and program.start_date:
+            prog_start = program.start_date
+            if isinstance(prog_start, str):
+                prog_start = date.fromisoformat(prog_start)
+            duration = program.duration_days or 60
+            num_weeks = (duration + 6) // 7
+
+            all_u_weights = weights
+            all_u_nutrition = list(NutritionDay.objects.filter(user=user).prefetch_related('meals'))
+            all_u_daily = list(DailyLog.objects.filter(user=user))
+            all_u_cardio = list(CardioEntry.objects.filter(user=user, completed=True))
+            all_u_measurements = measurements
+            all_u_days = list(ProgramDay.objects.filter(program=program))
+
+            for w_idx in range(num_weeks):
+                w_start = prog_start + timedelta(days=w_idx * 7)
+                w_end = min(prog_start + timedelta(days=w_idx * 7 + 6), prog_start + timedelta(days=duration - 1))
+                w_label = f"Week {w_idx + 1}"
+                d_range_str = f"{w_start.strftime('%b %d')} – {w_end.strftime('%b %d')}"
+
+                # Weight
+                wk_weights = [w.weight_kg for w in all_u_weights if w_start <= w.date <= w_end]
+                avg_w = round(sum(wk_weights) / len(wk_weights), 2) if wk_weights else None
+                w_change = round(avg_w - resolved_starting_weight, 2) if avg_w is not None and resolved_starting_weight is not None else None
+
+                # Nutrition
+                wk_nutr = [nd for nd in all_u_nutrition if w_start <= nd.date <= w_end]
+                avg_cal = round(sum(nd.total_calories() for nd in wk_nutr) / len(wk_nutr)) if wk_nutr else None
+                avg_prot = round(sum(nd.total_protein() for nd in wk_nutr) / len(wk_nutr)) if wk_nutr else None
+
+                # Steps & Sleep
+                wk_daily = [dl for dl in all_u_daily if w_start <= dl.date <= w_end]
+                wk_steps = [dl.steps for dl in wk_daily if dl.steps is not None]
+                wk_sleep = [dl.sleep_hours for dl in wk_daily if dl.sleep_hours is not None]
+                avg_steps = int(round(sum(wk_steps) / len(wk_steps))) if wk_steps else None
+                avg_sleep = round(sum(wk_sleep) / len(wk_sleep), 1) if wk_sleep else None
+
+                # Cardio
+                wk_cardio = sum(c.duration_minutes for c in all_u_cardio if w_start <= c.date <= w_end)
+
+                # Workouts
+                wk_completed = sum(1 for pd in all_u_days if pd.day_number is not None and (w_idx * 7 + 1) <= pd.day_number <= min((w_idx + 1) * 7, duration) and pd.status == 'COMPLETED')
+                eff_target = min(weekly_workouts_target, (w_end - w_start).days + 1)
+                workout_pct = round(wk_completed / max(1, eff_target), 2)
+
+                # Waist
+                wk_meas = [m for m in all_u_measurements if w_start <= m.date <= w_end and m.waist_cm is not None]
+                latest_waist = wk_meas[-1].waist_cm if wk_meas else None
+                waist_change = round(latest_waist - resolved_starting_waist, 1) if latest_waist is not None and resolved_starting_waist is not None else None
+
+                # Strength Trend
+                strength_trend = "Maintained / Increasing"
+                if w_idx == 0:
+                    strength_trend = "Baseline Set"
+
+                # Energy & Recovery Notes
+                recovery_notes_list = [dl.recovery_notes for dl in wk_daily if dl.recovery_notes]
+                if recovery_notes_list:
+                    energy_notes = recovery_notes_list[0]
+                elif w_idx == 0:
+                    energy_notes = "Return-to-training week; focus on clean form and consistent logging."
+                elif w_idx == num_weeks - 1:
+                    energy_notes = f"Final days; prepare Day {duration} measurements and photos."
+                else:
+                    energy_notes = f"Week {w_idx + 1} progression; maintain consistency across sleep and training."
+
+                # Action for Next Week (Automated Decision Protocol Rules 1-5)
+                if avg_w is None and not wk_daily and not wk_nutr:
+                    action_rec = f"Awaiting Week {w_idx + 1} daily entries"
+                elif strength_trend == "Declining":
+                    action_rec = "Rule 5: Do not increase training volume. Assess sleep, calories, recovery and fatigue."
+                elif w_change is not None and w_change < -0.8:
+                    action_rec = "Rule 4: Weight dropping too fast. Increase calories slightly (+100–150 kcal) and/or reduce cardio."
+                elif w_change is not None and abs(w_change) < 0.2 and waist_change is not None and abs(waist_change) < 0.2:
+                    action_rec = "Rule 3: Weight & waist unchanged for 2 wks. Consider small adjustment (~100–150 kcal/day) OR modest increase in activity."
+                elif w_change is not None and w_change <= 0 and (waist_change is None or waist_change <= 0):
+                    action_rec = "Rule 1 & 2: Maintain current plan. Steady recomposition and waist reduction on track."
+                else:
+                    action_rec = "Maintain current plan; monitor 7-day trend."
+
+                weekly_review.append({
+                    'week': w_label,
+                    'week_index': w_idx,
+                    'date_range': d_range_str,
+                    'avg_weight': avg_w,
+                    'weight_change': w_change,
+                    'avg_calories': avg_cal,
+                    'avg_protein': avg_prot,
+                    'avg_steps': avg_steps,
+                    'avg_sleep': avg_sleep,
+                    'cardio_minutes': wk_cardio,
+                    'workout_pct': workout_pct,
+                    'waist': latest_waist,
+                    'waist_change': waist_change,
+                    'strength_trend': strength_trend,
+                    'energy_notes': energy_notes,
+                    'action_recommendation': action_rec,
+                    'is_current': (w_start <= today <= w_end),
+                })
 
         return Response({
             'streak_days': streak,
@@ -229,6 +353,13 @@ class DashboardStatsView(APIView):
                 'fat_target': target.fat_g,
                 'water_consumed_ml': water_consumed,
                 'water_target_ml': target.water_ml,
+            },
+            'daily_log': {
+                'steps': steps_today,
+                'sleep_hours': sleep_today,
+                'sleep_quality': sleep_quality_today,
+                'energy_level': energy_level_today,
+                'recovery_notes': recovery_notes_today,
             },
             'activity_heatmap': activity_dates,
             'pending_assigned_workout': pending_workout_data,
@@ -254,6 +385,7 @@ class DashboardStatsView(APIView):
                 'program_completion_percent': round(((program.current_day - 1) / program.duration_days) * 100, 1) if program else 0,
             },
             'journey_pacing': pacing_data,
+            'weekly_review': weekly_review,
             'adherence': adherence_data,
             'trends': {
                 'weight': weight_trend,
@@ -261,6 +393,7 @@ class DashboardStatsView(APIView):
                 'nutrition': nutrition_trend,
             }
         })
+
 
 class JourneyPacingStatusView(APIView):
     permission_classes = [permissions.IsAuthenticated]

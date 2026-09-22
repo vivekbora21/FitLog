@@ -8,8 +8,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/lib/authContext';
+import styles from './gym.module.css';
 
 export default function GymAdminPage() {
+  const { user } = useAuth();
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [memberships, setMemberships] = useState<GymMembership[]>([]);
   const [invitations, setInvitations] = useState<GymInvitation[]>([]);
@@ -68,17 +71,17 @@ export default function GymAdminPage() {
   const currentGym = gyms[0];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={styles.page}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className={styles.header}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <div className={styles.headerMetaRow}>
             <Badge variant="violet">Gym Founder & Owner View</Badge>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>•</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>David Vance</span>
+            <span className={styles.dot}>•</span>
+            <span className={styles.ownerName}>{user?.full_name || 'Gym Owner'}</span>
           </div>
-          <h1 style={{ fontSize: '2rem' }}>{currentGym?.name || 'Gym Admin Console'}</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+          <h1 className={styles.title}>{currentGym?.name || 'Gym Admin Console'}</h1>
+          <p className={styles.subtitle}>
             Tenant management, staff & member rosters, onboarding invitations, and compliance audit trail.
           </p>
         </div>
@@ -92,33 +95,33 @@ export default function GymAdminPage() {
       {/* Facility & Branch Info */}
       {currentGym && (
         <Card elevated>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem' }}>
+          <div className={styles.facilityRow}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className={styles.facilityNameRow}>
                 <Building2 size={24} color="var(--color-primary)" />
-                <h2 style={{ fontSize: '1.4rem' }}>{currentGym.name}</h2>
+                <h2 className={styles.facilityName}>{currentGym.name}</h2>
               </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '6px', maxWidth: '600px' }}>
+              <p className={styles.facilityDesc}>
                 {currentGym.description}
               </p>
-              <div style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <div className={styles.facilityAddress}>
                 📍 {currentGym.address}, {currentGym.city} • 📞 {currentGym.phone}
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1.5rem' }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-primary-light)', fontFamily: 'Outfit, sans-serif' }}>
+            <div className={styles.statsRow}>
+              <div className={styles.statBlock}>
+                <div className={`${styles.statValue} ${styles.statValuePrimary}`}>
                   {memberships.length}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Active Members</div>
+                <div className={styles.statLabel}>Active Members</div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-cyan)', fontFamily: 'Outfit, sans-serif' }}>
+              <div className={styles.statBlock}>
+                <div className={`${styles.statValue} ${styles.statValueCyan}`}>
                   {currentGym.branches?.length || 2}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Branches</div>
+                <div className={styles.statLabel}>Branches</div>
               </div>
             </div>
           </div>
@@ -127,31 +130,31 @@ export default function GymAdminPage() {
 
       {/* Roster: Members & Trainers */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.35rem' }}>Active Membership Roster</h2>
+        <div className={styles.sectionHeaderRow}>
+          <h2 className={styles.sectionTitle}>Active Membership Roster</h2>
           <Badge variant="emerald">{memberships.length} Total Enrolled</Badge>
         </div>
 
         <Card>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '10px' }}>Member / Staff</th>
-                  <th style={{ padding: '10px' }}>Role</th>
-                  <th style={{ padding: '10px' }}>Status</th>
-                  <th style={{ padding: '10px' }}>Privacy & Data Sharing</th>
-                  <th style={{ padding: '10px' }}>Enrolled Date</th>
+                <tr className={styles.tableHeadRow}>
+                  <th className={styles.th}>Member / Staff</th>
+                  <th className={styles.th}>Role</th>
+                  <th className={styles.th}>Status</th>
+                  <th className={styles.th}>Privacy & Data Sharing</th>
+                  <th className={styles.th}>Enrolled Date</th>
                 </tr>
               </thead>
               <tbody>
                 {memberships.map((m) => (
-                  <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '12px 10px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{m.user?.full_name || 'Athlete'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.user?.email || ''}</div>
+                  <tr key={m.id} className={styles.tr}>
+                    <td className={styles.td}>
+                      <div className={styles.memberName}>{m.user?.full_name || 'Athlete'}</div>
+                      <div className={styles.memberEmail}>{m.user?.email || ''}</div>
                     </td>
-                    <td style={{ padding: '12px 10px' }}>
+                    <td className={styles.td}>
                       <Badge
                         variant={
                           m.role === 'OWNER' ? 'violet' : m.role === 'TRAINER' ? 'amber' : 'emerald'
@@ -160,15 +163,15 @@ export default function GymAdminPage() {
                         {m.role}
                       </Badge>
                     </td>
-                    <td style={{ padding: '12px 10px' }}>
-                      <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                    <td className={styles.td}>
+                      <span className={styles.statusText}>
                         ● {m.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 10px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                    <td className={`${styles.td} ${styles.tdSecondary}`}>
                       {m.share_workouts_with_trainers ? '✓ Workouts Shared' : 'Private'}
                     </td>
-                    <td style={{ padding: '12px 10px', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                    <td className={`${styles.td} ${styles.tdMuted}`}>
                       {m.created_at ? new Date(m.created_at).toLocaleDateString() : 'Active'}
                     </td>
                   </tr>
@@ -181,46 +184,46 @@ export default function GymAdminPage() {
 
       {/* Invitations Management */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.35rem' }}>Onboarding Invitations</h2>
+        <div className={styles.sectionHeaderRow}>
+          <h2 className={styles.sectionTitle}>Onboarding Invitations</h2>
           <Badge variant="amber">{invitations.length} Issued</Badge>
         </div>
 
         <Card>
           {invitations.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No pending invitations.</p>
+            <p className={styles.emptyText}>No pending invitations.</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
                 <thead>
-                  <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    <th style={{ padding: '10px' }}>Recipient Email</th>
-                    <th style={{ padding: '10px' }}>Target Role</th>
-                    <th style={{ padding: '10px' }}>Invited By</th>
-                    <th style={{ padding: '10px' }}>Status</th>
-                    <th style={{ padding: '10px' }}>Expires</th>
+                  <tr className={styles.tableHeadRow}>
+                    <th className={styles.th}>Recipient Email</th>
+                    <th className={styles.th}>Target Role</th>
+                    <th className={styles.th}>Invited By</th>
+                    <th className={styles.th}>Status</th>
+                    <th className={styles.th}>Expires</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invitations.map((inv) => (
-                    <tr key={inv.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '12px 10px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <tr key={inv.id} className={styles.tr}>
+                      <td className={`${styles.td} ${styles.tdStrong}`}>
                         {inv.email}
                       </td>
-                      <td style={{ padding: '12px 10px' }}>
+                      <td className={styles.td}>
                         <Badge variant={inv.role === 'TRAINER' ? 'amber' : 'emerald'}>
                           {inv.role}
                         </Badge>
                       </td>
-                      <td style={{ padding: '12px 10px', color: 'var(--text-secondary)' }}>
+                      <td className={`${styles.td} ${styles.tdSecondary}`}>
                         {inv.invited_by_name}
                       </td>
-                      <td style={{ padding: '12px 10px' }}>
-                        <span style={{ color: inv.status === 'PENDING' ? '#FBBF24' : 'var(--color-primary)' }}>
+                      <td className={styles.td}>
+                        <span className={inv.status === 'PENDING' ? styles.statusPending : styles.statusActive}>
                           {inv.status}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 10px', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                      <td className={`${styles.td} ${styles.tdMuted}`}>
                         {new Date(inv.expires_at).toLocaleDateString()}
                       </td>
                     </tr>
@@ -234,38 +237,30 @@ export default function GymAdminPage() {
 
       {/* Tenant Compliance Audit Log */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+        <div className={styles.auditHeaderRow}>
           <History size={20} color="var(--color-violet)" />
-          <h2 style={{ fontSize: '1.35rem' }}>Tenant Security & Audit Trail</h2>
+          <h2 className={styles.sectionTitle}>Tenant Security & Audit Trail</h2>
           <Badge variant="violet">Compliance</Badge>
         </div>
 
         <Card>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className={styles.auditList}>
             {auditLogs.map((log) => (
               <div
                 key={log.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '10px 14px',
-                  background: 'var(--bg-surface-elevated)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.85rem',
-                }}
+                className={styles.auditItem}
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{log.action}</span>
+                  <div className={styles.auditItemHeader}>
+                    <span className={styles.auditAction}>{log.action}</span>
                     <Badge variant="emerald">{log.resource_type}</Badge>
                   </div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>
+                  <div className={styles.auditActor}>
                     By {log.actor_name}
                   </div>
                 </div>
 
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                <div className={styles.auditTime}>
                   {new Date(log.created_at).toLocaleTimeString()} • {new Date(log.created_at).toLocaleDateString()}
                 </div>
               </div>
@@ -276,9 +271,9 @@ export default function GymAdminPage() {
 
       {/* Send Invitation Modal */}
       <Modal isOpen={inviteModalOpen} onClose={() => setInviteModalOpen(false)} title="Issue Gym Invitation">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className={styles.modalForm}>
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Candidate Email
             </label>
             <input
@@ -286,43 +281,25 @@ export default function GymAdminPage() {
               placeholder="e.g. new.athlete@example.com"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.formInput}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Assigned Role
             </label>
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as any)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.formSelect}
             >
               <option value="MEMBER">Gym Member</option>
               <option value="TRAINER">Trainer / Coach</option>
             </select>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+          <div className={styles.modalActions}>
             <Button variant="secondary" onClick={() => setInviteModalOpen(false)}>
               Cancel
             </Button>

@@ -101,6 +101,43 @@
   margin-top: 0.4rem;
 }
 
+.timelineHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.timelineHeaderTitle {
+  margin: 0;
+}
+
+.timelineMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.thCurrent {
+  background: var(--color-primary-glow);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.tdCurrent {
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.activeLabel {
+  display: inline-block;
+  font-size: 0.65rem;
+  color: var(--color-primary);
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.emptyStateHint {
+  margin: 0.35rem 0 0;
+}
+
 .emptyState {
   border: 1px dashed var(--border-subtle);
   border-radius: var(--radius-lg);

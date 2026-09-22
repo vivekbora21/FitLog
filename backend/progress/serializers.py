@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WeightEntry, BodyMeasurement, PersonalRecord
+from .models import WeightEntry, BodyMeasurement, PersonalRecord, DailyLog
 from exercises.serializers import ExerciseSerializer
 
 class WeightEntrySerializer(serializers.ModelSerializer):
@@ -28,3 +28,15 @@ class PersonalRecordSerializer(serializers.ModelSerializer):
         model = PersonalRecord
         fields = ['id', 'exercise', 'exercise_name', 'primary_muscle', 'max_weight_kg', 'reps', 'estimated_one_rep_max', 'achieved_at']
         read_only_fields = ['user']
+
+
+class DailyLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DailyLog
+        fields = [
+            'id', 'user', 'date', 'steps', 'sleep_hours',
+            'sleep_quality', 'energy_level', 'recovery_notes',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['user', 'created_at', 'updated_at']
+

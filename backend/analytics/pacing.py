@@ -1,16 +1,17 @@
 from datetime import date, timedelta
 from django.db import models
 from django.utils import timezone
-from progress.models import WeightEntry, PersonalRecord, BodyMeasurement
+from progress.models import WeightEntry, PersonalRecord, BodyMeasurement, DailyLog
 from workouts.models import JourneyProgram, ProgramDay, WorkoutSession
 
 MODE_BASE_WEIGHTS = {
-    'CUT': {'velocity': 40, 'adherence': 35, 'strength': 25},
-    'BULK': {'velocity': 35, 'adherence': 35, 'strength': 30},
-    'FOCUS': {'velocity': 10, 'adherence': 40, 'strength': 50},
-    'RECOMP': {'velocity': 25, 'adherence': 40, 'strength': 35},
-    'HABIT': {'velocity': 15, 'adherence': 70, 'strength': 15},
+    'CUT': {'velocity': 35, 'adherence': 30, 'strength': 20, 'recovery': 15},
+    'BULK': {'velocity': 30, 'adherence': 30, 'strength': 25, 'recovery': 15},
+    'FOCUS': {'velocity': 10, 'adherence': 35, 'strength': 40, 'recovery': 15},
+    'RECOMP': {'velocity': 20, 'adherence': 35, 'strength': 30, 'recovery': 15},
+    'HABIT': {'velocity': 15, 'adherence': 55, 'strength': 15, 'recovery': 15},
 }
+
 
 DEFAULT_WEEKLY_RATES = {
     'CUT': -0.5,
@@ -99,6 +100,7 @@ def calculate_journey_pacing(user, program=None):
             'velocity': None,
             'adherence': None,
             'strength': None,
+            'recovery': None,
             'trajectory_curve': [],
             'starting_waist': None,
             'current_waist': None,
@@ -178,7 +180,7 @@ def calculate_journey_pacing(user, program=None):
             elif rate <= -0.25:
                 velocity_status = 'ON_TRACK'
                 velocity_score = 96
-                velocity_message = f"Losing {abs(rate)} kg/wk. Within optimal fat oxidation corridor (-0.3 to -0.7 kg/wk)."
+                velocity_message = f"Losing {abs(rate)} kg/wk. Within optimal fat oxidation corridor (-0.25 to -1.0 kg/wk)."
             elif rate < 0:
                 velocity_status = 'SLIGHTLY_SLOW'
                 velocity_score = 78
@@ -196,7 +198,7 @@ def calculate_journey_pacing(user, program=None):
             elif rate >= 0.15:
                 velocity_status = 'ON_TRACK'
                 velocity_score = 96
-                velocity_message = f"Gaining +{rate} kg/wk. Optimal clean surplus corridor (+0.2 to +0.4 kg/wk)."
+                velocity_message = f"Gaining +{rate} kg/wk. Optimal clean surplus corridor (+0.15 to +0.55 kg/wk)."
             elif rate >= 0:
                 velocity_status = 'SLIGHTLY_SLOW'
                 velocity_score = 80
@@ -214,7 +216,7 @@ def calculate_journey_pacing(user, program=None):
             else:
                 velocity_status = 'DRIFTING'
                 velocity_score = 75
-                velocity_message = f"Weight drifting ({rate:+.2f} kg/wk). Recommended maintenance target ±0.2 kg/wk."
+                velocity_message = f"Weight drifting ({rate:+.2f} kg/wk). Recommended maintenance target ±0.25 kg/wk."
 
         elif mode == 'RECOMP':
             if -0.35 <= rate <= 0.1:
@@ -325,6 +327,71 @@ def calculate_journey_pacing(user, program=None):
             strength_score = 92
             strength_message = f"Core lifts stable across {len(tracked_prs)} anchors."
 
+    # 4. PILLAR: Recovery (Sleep & NEAT Steps)
+    recovery_start = max(start_date, today - timedelta(days=6))
+    recent_daily = list(DailyLog.objects.filter(user=user, date__gte=recovery_start, date__lte=today))
+
+    sleep_entries = [d.sleep_hours for d in recent_daily if d.sleep_hours is not None]
+    step_entries = [d.steps for d in recent_daily if d.steps is not None]
+    energy_entries = [d.energy_level for d in recent_daily if d.energy_level is not None]
+
+    avg_sleep = round(sum(sleep_entries) / len(sleep_entries), 1) if sleep_entries else None
+    avg_steps = int(round(sum(step_entries) / len(step_entries))) if step_entries else None
+    avg_energy = round(sum(energy_entries) / len(energy_entries), 1) if energy_entries else None
+
+    recovery_active = bool(sleep_entries or step_entries)
+    recovery_score = 90
+    recovery_status = 'CALIBRATING'
+    recovery_message = 'Log daily sleep hours and steps to activate recovery pacing.'
+    fatigue_debt_detected = False
+
+    if recovery_active:
+        sleep_parts = []
+        step_parts = []
+        sleep_score = 90
+        step_score = 90
+
+        if avg_sleep is not None:
+            if avg_sleep >= 7.5:
+                sleep_score = 98
+                sleep_parts.append(f"Averaging {avg_sleep}h sleep (target 7.5–8.5h). Optimal slow-wave recovery window.")
+            elif avg_sleep >= 6.5:
+                sleep_score = 82
+                sleep_parts.append(f"Averaging {avg_sleep}h sleep. Solid recovery baseline; 7.5–8.5h recommended.")
+            else:
+                sleep_score = 60
+                sleep_parts.append(f"Averaging {avg_sleep}h sleep (below 7.0h threshold). Fatigue debt risks hypertrophy & recovery.")
+                fatigue_debt_detected = True
+
+        if avg_steps is not None:
+            if avg_steps >= 8000:
+                step_score = 96
+                step_parts.append(f"Averaging {avg_steps:,} daily steps (target 8k–10k). Non-fatiguing NEAT expenditure on track.")
+            elif avg_steps >= 6000:
+                step_score = 82
+                step_parts.append(f"Averaging {avg_steps:,} daily steps. Moderate activity baseline.")
+            else:
+                step_score = 68
+                step_parts.append(f"Averaging {avg_steps:,} daily steps (below 8k target). Low NEAT reduces metabolic throughput.")
+
+        if sleep_entries and step_entries:
+            recovery_score = int(round(0.6 * sleep_score + 0.4 * step_score))
+        elif sleep_entries:
+            recovery_score = sleep_score
+        else:
+            recovery_score = step_score
+
+        if recovery_score >= 90:
+            recovery_status = 'OPTIMAL'
+        elif recovery_score >= 75:
+            recovery_status = 'ADEQUATE'
+        elif recovery_score >= 60:
+            recovery_status = 'FATIGUE_RISK'
+        else:
+            recovery_status = 'CRITICAL'
+
+        recovery_message = " ".join(sleep_parts + step_parts)
+
     # Dynamic Proportional Weight Normalization
     base_weights = MODE_BASE_WEIGHTS.get(mode, MODE_BASE_WEIGHTS['CUT'])
     active_weights = {}
@@ -336,6 +403,9 @@ def calculate_journey_pacing(user, program=None):
 
     if strength_active:
         active_weights['strength'] = (base_weights['strength'], strength_score)
+
+    if recovery_active:
+        active_weights['recovery'] = (base_weights.get('recovery', 15), recovery_score)
 
     total_active_base = sum(w for w, _ in active_weights.values())
     if total_active_base > 0:
@@ -370,6 +440,10 @@ def calculate_journey_pacing(user, program=None):
         duration_days=duration_days,
         rolling_7_avg=rolling_7_avg,
         target_weight_today=target_weight_today,
+        recovery_status=recovery_status,
+        avg_sleep=avg_sleep,
+        avg_steps=avg_steps,
+        fatigue_debt_detected=fatigue_debt_detected,
     )
 
     trajectory_curve = []
@@ -454,6 +528,17 @@ def calculate_journey_pacing(user, program=None):
             'message': strength_message,
             'tracked_lifts': strength_details,
         },
+        'recovery': {
+            'status': recovery_status,
+            'score': recovery_score,
+            'message': recovery_message,
+            'avg_sleep_hours': avg_sleep,
+            'target_sleep_hours': 8.0,
+            'avg_daily_steps': avg_steps,
+            'target_daily_steps': 8500,
+            'avg_energy': avg_energy,
+            'fatigue_debt_detected': fatigue_debt_detected,
+        },
         'trajectory_curve': trajectory_curve,
     }
 
@@ -461,12 +546,30 @@ def calculate_journey_pacing(user, program=None):
 def _generate_copilot_insight(
     mode, status, score, is_calibrating, velocity_status, adherence_status,
     strength_status, actual_weekly_rate, target_weekly_rate, adherence_pct,
-    current_day, duration_days, rolling_7_avg, target_weight_today
+    current_day, duration_days, rolling_7_avg, target_weight_today,
+    recovery_status='OPTIMAL', avg_sleep=None, avg_steps=None, fatigue_debt_detected=False
 ):
+    # RULE 5: Deload & Fatigue Management Protocol (High priority alert)
+
+    if fatigue_debt_detected or (strength_status in ('NEUTRAL', 'LAGGING') and avg_sleep is not None and avg_sleep < 7.0):
+        sleep_str = f"averaging {avg_sleep}h sleep" if avg_sleep else "sleep deficit detected"
+        return (
+            f"Rule 5 alert: Declining or stalled strength under {sleep_str}. "
+            "Do not increase training volume. Assess sleep, calories, and fatigue debt before pushing progressive overload."
+        )
+
     if is_calibrating:
         return (
             f"You are on Day {current_day} of {duration_days}. Weight baseline is currently calibrating. "
-            "Keep daily protein high and log your weight every morning after waking to form the rolling curve."
+            "Keep daily protein high, protect 7.5–8.5h sleep nightly, and log morning weight to establish your trend curve."
+        )
+
+
+    # RULE 4: Rapid weight drop + recovery compromise
+    if velocity_status == 'TOO_FAST' and actual_weekly_rate and actual_weekly_rate < -0.8 and (recovery_status in ('FATIGUE_RISK', 'CRITICAL') or (avg_sleep and avg_sleep < 7.0)):
+        return (
+            f"Rule 4 alert: Weight dropping very quickly ({abs(actual_weekly_rate):.2f} kg/wk) and recovery is strained. "
+            "Increase calories slightly (+100–150 kcal) and reduce cardio duration to protect lean tissue."
         )
 
     if mode == 'CUT':
@@ -476,6 +579,11 @@ def _generate_copilot_insight(
                 "This pace risks muscle loss. Add 150–200 kcal or reduce high-intensity cardio duration by 10 mins."
             )
         if velocity_status == 'STALLED':
+            if avg_steps is not None and avg_steps < 7500:
+                return (
+                    f"Rule 3 guidance: Weight loss has stalled with lower daily steps ({avg_steps:,}/day). "
+                    "Increase daily steps by 1,500–2,000 to reach the 8,000–10,000 NEAT target before cutting dietary calories."
+                )
             return (
                 "Weight loss has stalled over recent weigh-ins. Verify tracking accuracy on cooking oils and snacks, "
                 "or increase daily steps by 1,500 to restore your caloric deficit."
@@ -489,6 +597,7 @@ def _generate_copilot_insight(
             f"Excellent execution! You are on target at {rolling_7_avg} kg (target {target_weight_today} kg). "
             "Strength is preserved and cardio adherence is locked in. Stay the course."
         )
+
 
     elif mode == 'BULK':
         if velocity_status == 'TOO_FAST':

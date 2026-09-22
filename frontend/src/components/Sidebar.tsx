@@ -40,6 +40,7 @@ interface NavItem {
   icon: LucideIcon;
   badge?: string;
   badgeVariant?: 'amber' | 'violet' | 'emerald' | 'cyan' | 'rose';
+  isGated?: boolean;
 }
 
 interface SidebarProps {
@@ -59,11 +60,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
 
   const [journey, setJourney] = useState<JourneyPacingData | null>(null);
 
-  useEffect(() => {
+  const fetchJourney = () => {
     api.getJourneyPacingStatus().then(setJourney).catch(() => setJourney(null));
+  };
+
+  useEffect(() => {
+    fetchJourney();
+    const handleUpdate = () => fetchJourney();
+    window.addEventListener('fitlog:journey-updated', handleUpdate);
+    return () => window.removeEventListener('fitlog:journey-updated', handleUpdate);
   }, []);
 
-  const planBadge = journey?.has_program ? `Day ${journey.current_day}/${journey.duration_days}` : undefined;
+  const hasProgram = Boolean(journey?.has_program);
+  const planBadge = hasProgram ? `Day ${journey?.current_day}/${journey?.duration_days}` : undefined;
   const planBadgeVariant: NavItem['badgeVariant'] = journey?.is_calibrating
     ? 'cyan'
     : journey?.pacing_status === 'PACING_ALERT'
@@ -72,18 +81,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
         ? 'rose'
         : 'emerald';
 
+  const gatedBadge = !hasProgram && journey !== null ? 'Locked' : undefined;
+  const gatedVariant: NavItem['badgeVariant'] = 'amber';
+
   const mainNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/app', icon: LayoutDashboard },
-    { label: 'Today', href: '/app/workouts/active', icon: PlayCircle },
-    { label: 'Plan', href: '/app/workouts/plan', icon: CalendarDays, badge: planBadge, badgeVariant: planBadgeVariant },
-    { label: 'Plan History', href: '/app/workouts/plan/history', icon: History },
-    { label: 'Daily Log', href: '/app/daily', icon: ClipboardList },
-    { label: 'Progress', href: '/app/progress', icon: TrendingUp },
-    { label: 'Measurements', href: '/app/measurements', icon: Ruler },
-    { label: 'Nutrition', href: '/app/nutrition', icon: Utensils },
-    { label: 'Review', href: '/app/review', icon: Award },
+    { label: 'Today', href: '/app/workouts/active', icon: PlayCircle, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Plan', href: '/app/workouts/plan', icon: CalendarDays, badge: planBadge || gatedBadge, badgeVariant: planBadgeVariant || gatedVariant, isGated: true },
+    { label: 'Plan History', href: '/app/workouts/plan/history', icon: History, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Daily Log', href: '/app/daily', icon: ClipboardList, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Progress', href: '/app/progress', icon: TrendingUp, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Measurements', href: '/app/measurements', icon: Ruler, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Nutrition', href: '/app/nutrition', icon: Utensils, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Review', href: '/app/review', icon: Award, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
     { label: 'Guidelines', href: '/app/guidelines', icon: BookOpen },
-    { label: 'Milestones', href: '/app/expectations', icon: Target },
+    { label: 'Milestones', href: '/app/expectations', icon: Target, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
     { label: 'Settings', href: '/app/settings', icon: Settings },
   ];
 
@@ -271,9 +283,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
 
             return (
               <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
+                key={item.label}
+                href={hasProgram || !item.isGated ? item.href : '/app'}
+                onClick={(e) => {
+                  onClose();
+                  if (!hasProgram && item.isGated) {
+                    e.preventDefault();
+                    router.push('/app');
+                  }
+                }}
                 title={item.label}
                 style={{
                   position: 'relative',
@@ -357,7 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
 
                 return (
                   <Link
-                    key={item.href}
+                    key={item.label}
                     href={item.href}
                     onClick={onClose}
                     title={item.label}

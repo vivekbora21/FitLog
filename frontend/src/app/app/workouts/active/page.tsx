@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ExerciseModal } from '@/components/ExerciseModal';
+import styles from './active.module.css';
 
 interface ActiveSet {
   set_number: number;
@@ -305,51 +306,28 @@ function ActiveWorkoutLoggerInner() {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className={styles.page}>
       {/* Top Banner & Controls */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          padding: '1.25rem 1.5rem',
-          background: 'var(--bg-glass)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-lg)',
-          backdropFilter: 'blur(12px)',
-        }}
-      >
+      <div className={styles.banner}>
         <div>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            style={{
-              fontSize: '1.5rem',
-              fontWeight: 800,
-              fontFamily: 'Outfit, sans-serif',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              width: '100%',
-              maxWidth: '450px',
-            }}
+            className={styles.titleInput}
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+          <div className={styles.statsRow}>
+            <span className={styles.statLabel}>
               {exercises.length} {exercises.length === 1 ? 'Exercise' : 'Exercises'}
             </span>
-            <span style={{ color: 'var(--text-muted)' }}>•</span>
-            <span style={{ fontSize: '0.875rem', color: 'var(--color-cyan)', fontWeight: 600 }}>
+            <span className={styles.dot}>•</span>
+            <span className={styles.volumeText}>
               {calculateTotalVolume().toLocaleString()} kg lifted
             </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className={styles.bannerActions}>
           <Button variant="secondary" onClick={() => setIsModalOpen(true)}>
             <Plus size={16} />
             <span>Add Movement</span>
@@ -363,28 +341,16 @@ function ActiveWorkoutLoggerInner() {
 
       {/* Exercises Section */}
       {exercises.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className={styles.stack125}>
           {/* Main Action Card */}
-          <Card style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
-            <div
-              style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                background: 'rgba(16, 185, 129, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem auto',
-                color: 'var(--color-primary)',
-              }}
-            >
+          <Card className={styles.emptyCard}>
+            <div className={styles.emptyIconWrap}>
               <Dumbbell size={28} strokeWidth={2.2} />
             </div>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, fontFamily: 'Outfit, sans-serif', marginBottom: '0.5rem' }}>
+            <h3 className={styles.emptyTitle}>
               Add Exercises to Begin Session
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '540px', margin: '0 auto 1.5rem auto' }}>
+            <p className={styles.emptyText}>
               {routineExercises.length > 0
                 ? 'Select exercises from today’s routine below, or search any movement from the exercise library to start logging.'
                 : 'Select movements from the exercise library to begin tracking your workout sets, reps, and weights.'}
@@ -397,25 +363,16 @@ function ActiveWorkoutLoggerInner() {
 
           {/* Routine Prescribed Exercises Options */}
           {routineExercises.length > 0 && (
-            <Card style={{ padding: '1.5rem' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '1.25rem',
-                  flexWrap: 'wrap',
-                  gap: '0.75rem',
-                }}
-              >
+            <Card className={styles.routineCard}>
+              <div className={styles.routineCardHeader}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className={styles.routineCardHeaderTitleWrap}>
                     <Sparkles size={18} color="var(--color-primary)" />
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
+                    <h4 className={styles.routineCardHeaderTitle}>
                       Prescribed for Today: {title}
                     </h4>
                   </div>
-                  <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  <p className={styles.routineCardHeaderSubtitle}>
                     Choose which movements you want to log in this session:
                   </p>
                 </div>
@@ -425,35 +382,17 @@ function ActiveWorkoutLoggerInner() {
                 </Button>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
-                  gap: '1rem',
-                }}
-              >
+              <div className={styles.routineGrid}>
                 {routineExercises.map((re, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      padding: '1.1rem',
-                      background: 'var(--bg-surface-elevated)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-md)',
-                      gap: '1rem',
-                    }}
-                  >
+                  <div key={idx} className={styles.routineItem}>
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.975rem', color: 'var(--text-primary)' }}>
+                      <div className={styles.routineItemTop}>
+                        <span className={styles.routineItemName}>
                           {re.exercise_name}
                         </span>
                         <Badge variant="emerald">{re.primary_muscle}</Badge>
                       </div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      <div className={styles.routineItemMeta}>
                         Target: {re.target_sets || 3} sets × {re.target_reps || '8 reps'}
                         {re.suggested_weight_kg ? ` · ${re.suggested_weight_kg} kg` : ''}
                         {re.target_rpe ? ` @ RPE ${re.target_rpe}` : ''}
@@ -463,7 +402,7 @@ function ActiveWorkoutLoggerInner() {
                       size="sm"
                       variant="secondary"
                       onClick={() => addRoutineExercise(re)}
-                      style={{ width: '100%', justifyContent: 'center' }}
+                      className={styles.routineItemAddBtn}
                     >
                       <Plus size={14} />
                       <span>Add Exercise</span>
@@ -475,29 +414,20 @@ function ActiveWorkoutLoggerInner() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className={styles.stack125}>
           {/* Active Exercises List */}
           {exercises.map((ex, exIdx) => (
-            <Card key={exIdx} style={{ position: 'relative' }}>
+            <Card key={exIdx} className={styles.exerciseCard}>
               {/* Exercise Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '1rem',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  paddingBottom: '0.75rem',
-                }}
-              >
+              <div className={styles.exerciseCardHeader}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
+                  <div className={styles.exerciseNameRow}>
+                    <span className={styles.exerciseName}>
                       #{exIdx + 1} {ex.name}
                     </span>
                     <Badge variant="emerald">{ex.primaryMuscle}</Badge>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  <div className={styles.exerciseMeta}>
                     Target: {ex.sets.length} × {ex.targetReps || 'log reps'} @ RPE {ex.targetRpe || '8'} · Rest: {ex.restSeconds}s
                   </div>
                 </div>
@@ -507,69 +437,41 @@ function ActiveWorkoutLoggerInner() {
                 </Button>
               </div>
 
-              <div
-                style={{
-                  marginTop: '.75rem',
-                  padding: '.65rem .75rem',
-                  background: 'rgba(16, 185, 129, .08)',
-                  borderLeft: '3px solid var(--color-primary)',
-                  fontSize: '.8rem',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                <strong style={{ color: 'var(--color-primary)' }}>PROGRESSION RECOMMENDATION · </strong>
+              <div className={styles.progressionBox}>
+                <strong className={styles.progressionLabel}>PROGRESSION RECOMMENDATION · </strong>
                 {progressionRecommendation(ex)}
               </div>
 
               {/* Set Table */}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
                   <thead>
-                    <tr
-                      style={{
-                        color: 'var(--text-muted)',
-                        borderBottom: '1px solid var(--border-subtle)',
-                        fontSize: '0.75rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                      }}
-                    >
-                      <th style={{ padding: '8px', width: '50px' }}>Set</th>
-                      <th style={{ padding: '8px', width: '120px' }}>Type</th>
-                      <th style={{ padding: '8px', width: '110px' }}>kg</th>
-                      <th style={{ padding: '8px', width: '90px' }}>Reps</th>
-                      <th style={{ padding: '8px', width: '70px' }}>Done</th>
-                      <th style={{ padding: '8px', width: '40px' }}></th>
+                    <tr className={styles.theadRow}>
+                      <th className={`${styles.th} ${styles.thSet}`}>Set</th>
+                      <th className={`${styles.th} ${styles.thType}`}>Type</th>
+                      <th className={`${styles.th} ${styles.thWeight}`}>kg</th>
+                      <th className={`${styles.th} ${styles.thReps}`}>Reps</th>
+                      <th className={`${styles.th} ${styles.thDone}`}>Done</th>
+                      <th className={`${styles.th} ${styles.thAction}`}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {ex.sets.map((set, sIdx) => (
                       <tr
                         key={sIdx}
-                        style={{
-                          borderBottom: '1px solid var(--border-subtle)',
-                          background: set.completed ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                        }}
+                        className={`${styles.setRow} ${set.completed ? styles.setRowCompleted : ''}`}
                       >
                         {/* Set # */}
-                        <td style={{ padding: '8px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        <td className={`${styles.td} ${styles.tdSetNumber}`}>
                           {set.set_number}
                         </td>
 
                         {/* Set Type */}
-                        <td style={{ padding: '8px' }}>
+                        <td className={styles.td}>
                           <select
                             value={set.set_type}
                             onChange={(e) => updateSet(exIdx, sIdx, 'set_type', e.target.value as ActiveSet['set_type'])}
-                            style={{
-                              background: 'var(--bg-surface-elevated)',
-                              border: '1px solid var(--border-subtle)',
-                              color: 'var(--text-primary)',
-                              padding: '4px 8px',
-                              borderRadius: 'var(--radius-sm)',
-                              fontSize: '0.8125rem',
-                              outline: 'none',
-                            }}
+                            className={styles.setTypeSelect}
                           >
                             <option value="NORMAL">Normal</option>
                             <option value="WARMUP">Warmup</option>
@@ -579,72 +481,45 @@ function ActiveWorkoutLoggerInner() {
                         </td>
 
                         {/* Weight (kg) */}
-                        <td style={{ padding: '8px' }}>
+                        <td className={styles.td}>
                           <input
                             type="number"
                             step="0.5"
                             value={set.weight_kg}
                             onChange={(e) => updateSet(exIdx, sIdx, 'weight_kg', parseFloat(e.target.value) || 0)}
-                            style={{
-                              width: '80px',
-                              background: '#FFFFFF',
-                              border: '1px solid var(--border-subtle)',
-                              color: 'var(--text-primary)',
-                              padding: '6px 8px',
-                              borderRadius: 'var(--radius-sm)',
-                              fontWeight: 700,
-                              outline: 'none',
-                            }}
+                            className={styles.weightInput}
                           />
                         </td>
 
                         {/* Reps */}
-                        <td style={{ padding: '8px' }}>
+                        <td className={styles.td}>
                           <input
                             type="number"
                             value={set.reps}
                             onChange={(e) => updateSet(exIdx, sIdx, 'reps', parseInt(e.target.value, 10) || 0)}
-                            style={{
-                              width: '65px',
-                              background: '#FFFFFF',
-                              border: '1px solid var(--border-subtle)',
-                              color: 'var(--text-primary)',
-                              padding: '6px 8px',
-                              borderRadius: 'var(--radius-sm)',
-                              fontWeight: 700,
-                              outline: 'none',
-                            }}
+                            className={styles.repsInput}
                           />
                         </td>
 
                         {/* Completed Checkbox */}
-                        <td style={{ padding: '8px' }}>
+                        <td className={styles.td}>
                           <button
                             type="button"
                             onClick={() => updateSet(exIdx, sIdx, 'completed', !set.completed)}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '6px',
-                              border: set.completed ? '1px solid var(--color-primary)' : '1px solid var(--border-bright)',
-                              background: set.completed ? 'var(--color-primary)' : '#FFFFFF',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              transition: 'all var(--transition-fast)',
-                            }}
+                            className={`${styles.completeToggle} ${set.completed ? styles.completeToggleActive : ''}`}
+                            aria-label={set.completed ? 'Mark incomplete' : 'Mark complete'}
                           >
                             {set.completed && <Check size={18} color="#FFFFFF" strokeWidth={3} />}
                           </button>
                         </td>
 
                         {/* Remove Set */}
-                        <td style={{ padding: '8px' }}>
+                        <td className={styles.td}>
                           {ex.sets.length > 1 && (
                             <button
                               onClick={() => removeSet(exIdx, sIdx)}
-                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                              className={styles.removeSetBtn}
+                              aria-label="Remove set"
                             >
                               <X size={14} />
                             </button>
@@ -657,7 +532,7 @@ function ActiveWorkoutLoggerInner() {
               </div>
 
               {/* Add Set Button */}
-              <div style={{ marginTop: '12px' }}>
+              <div className={styles.addSetWrap}>
                 <Button size="sm" variant="secondary" onClick={() => addSet(exIdx)}>
                   <Plus size={14} />
                   <span>Add Set</span>
@@ -668,20 +543,11 @@ function ActiveWorkoutLoggerInner() {
 
           {/* Quick-add unadded routine exercises if any remain */}
           {unaddedRoutineExercises.length > 0 && (
-            <Card style={{ padding: '1.25rem 1.5rem', background: 'var(--bg-glass)', border: '1px dashed var(--border-glow)' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '0.75rem',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Card className={styles.moreRoutineCard}>
+              <div className={styles.moreRoutineHeader}>
+                <div className={styles.moreRoutineHeaderLeft}>
                   <Sparkles size={16} color="var(--color-primary)" />
-                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  <span className={styles.moreRoutineHeaderText}>
                     Add More from Today’s Routine ({title})
                   </span>
                 </div>
@@ -692,37 +558,16 @@ function ActiveWorkoutLoggerInner() {
                   </Button>
                 )}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className={styles.moreRoutineChipsWrap}>
                 {unaddedRoutineExercises.map((re, idx) => (
                   <button
                     key={idx}
                     onClick={() => addRoutineExercise(re)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 14px',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'var(--bg-surface-elevated)',
-                      border: '1px solid var(--border-subtle)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary)';
-                      (e.currentTarget as HTMLElement).style.background = 'rgba(16, 185, 129, 0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)';
-                      (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface-elevated)';
-                    }}
+                    className={styles.routineChip}
                   >
                     <Plus size={14} color="var(--color-primary)" />
                     <span>{re.exercise_name}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({re.primary_muscle})</span>
+                    <span className={styles.moreRoutineChipMeta}>({re.primary_muscle})</span>
                   </button>
                 ))}
               </div>
@@ -730,7 +575,7 @@ function ActiveWorkoutLoggerInner() {
           )}
 
           {/* Add Movement Button */}
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
+          <div className={styles.addMovementWrap}>
             <Button variant="secondary" onClick={() => setIsModalOpen(true)}>
               <Plus size={16} />
               <span>Add Movement from Library</span>
@@ -748,44 +593,26 @@ function ActiveWorkoutLoggerInner() {
 
       {/* Finish Session Summary Modal */}
       <Modal isOpen={finishModalOpen} onClose={() => setFinishModalOpen(false)} title="Complete Workout Session">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '1rem',
-              background: 'rgba(16, 185, 129, 0.08)',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--border-glow)',
-            }}
-          >
-            <Trophy size={36} color="var(--color-primary)" style={{ margin: '0 auto 8px auto' }} />
-            <h3 style={{ fontSize: '1.3rem' }}>Outstanding Work!</h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              You moved <strong style={{ color: 'var(--color-primary-light)' }}>{calculateTotalVolume().toLocaleString()} kg</strong> of total volume.
+        <div className={styles.stack125}>
+          <div className={styles.finishSummaryBox}>
+            <Trophy size={36} color="var(--color-primary)" className={styles.finishTrophyIcon} />
+            <h3 className={styles.finishTitle}>Outstanding Work!</h3>
+            <p className={styles.finishSubtitle}>
+              You moved <strong className={styles.finishVolumeHighlight}>{calculateTotalVolume().toLocaleString()} kg</strong> of total volume.
             </p>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Perceived Exertion (RPE 1-10)
             </label>
-            <div style={{ display: 'flex', gap: '6px', marginTop: '6px', overflowX: 'auto' }}>
+            <div className={styles.rpeRow}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => setOverallRpe(num)}
-                  style={{
-                    flex: 1,
-                    minWidth: '28px',
-                    padding: '8px 0',
-                    borderRadius: 'var(--radius-sm)',
-                    border: overallRpe === num ? '1px solid var(--color-primary)' : '1px solid var(--border-subtle)',
-                    background: overallRpe === num ? 'var(--color-primary)' : '#FFFFFF',
-                    color: overallRpe === num ? '#FFFFFF' : 'var(--text-primary)',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
+                  className={`${styles.rpeBtn} ${overallRpe === num ? styles.rpeBtnActive : ''}`}
                 >
                   {num}
                 </button>
@@ -794,7 +621,7 @@ function ActiveWorkoutLoggerInner() {
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Session Notes
             </label>
             <textarea
@@ -802,21 +629,11 @@ function ActiveWorkoutLoggerInner() {
               value={workoutNotes}
               onChange={(e) => setWorkoutNotes(e.target.value)}
               placeholder="How did the session feel? Energy levels, pumps, form cues..."
-              style={{
-                width: '100%',
-                marginTop: '6px',
-                padding: '10px',
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                resize: 'none',
-              }}
+              className={styles.notesTextarea}
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+          <div className={styles.modalActions}>
             <Button variant="secondary" onClick={() => setFinishModalOpen(false)}>
               Keep Logging
             </Button>
@@ -832,7 +649,7 @@ function ActiveWorkoutLoggerInner() {
 
 export default function ActiveWorkoutLoggerPage() {
   return (
-    <Suspense fallback={<div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading active session...</div>}>
+    <Suspense fallback={<div className={styles.loadingFallback}>Loading active session...</div>}>
       <ActiveWorkoutLoggerInner />
     </Suspense>
   );

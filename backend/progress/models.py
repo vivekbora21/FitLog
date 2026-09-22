@@ -98,3 +98,35 @@ class PersonalRecord(UUIDTimeStampedModel):
 
     def __str__(self):
         return f"PR: {self.exercise.name} - {self.max_weight_kg}kg x {self.reps} (1RM: {self.estimated_one_rep_max}kg)"
+
+
+class DailyLog(UUIDTimeStampedModel):
+    """
+    Daily lifestyle, recovery, and NEAT activity log.
+    Captures steps (Pillar 9 target: 8,000–10,000), sleep duration (Pillar 7 target: 7.5–8.5h),
+    energy/recovery score, and subjective fatigue notes.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='daily_logs'
+    )
+    date = models.DateField()
+    steps = models.PositiveIntegerField(null=True, blank=True, help_text="Daily step count")
+    sleep_hours = models.FloatField(null=True, blank=True, help_text="Sleep duration in hours")
+    sleep_quality = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Subjective sleep quality 1-5")
+    energy_level = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Subjective energy rating 1-5")
+    recovery_notes = models.TextField(blank=True, default='', help_text="Subjective recovery and fatigue notes")
+
+    class Meta:
+        ordering = ['-date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'date'],
+                name='unique_user_daily_log'
+            )
+        ]
+
+    def __str__(self):
+        return f"DailyLog {self.user.email} on {self.date}: {self.steps or 0} steps, {self.sleep_hours or 0}h sleep"
+

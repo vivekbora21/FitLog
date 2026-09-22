@@ -17,45 +17,72 @@ type Program = {
   target_weight_kg?: number;
 } | null;
 
-function getBenchmarkRows(mode: JourneyMode, startWeight?: number, targetWeight?: number) {
+type TrackedLift = {
+  exercise: string;
+  estimated_1rm: number;
+  summary?: string;
+};
+
+function fmtDelta(delta: number, unit: string) {
+  const rounded = Math.round(delta * 10) / 10;
+  return `${rounded > 0 ? '+' : ''}${rounded}${unit}`;
+}
+
+function getBenchmarkRows(
+  mode: JourneyMode,
+  startWeight?: number,
+  targetWeight?: number,
+  currentWeight?: number | null,
+  startWaist?: number | null,
+  currentWaist?: number | null,
+  focusLift?: TrackedLift | null
+) {
   const hasWeights = startWeight != null && targetWeight != null;
   const change = hasWeights ? Math.round((targetWeight! - startWeight!) * 10) / 10 : null;
   const changeStr = change == null ? 'Set start & target weight to see this' : `${change > 0 ? '+' : ''}${change} kg`;
+  const weightProgress = currentWeight != null && startWeight != null
+    ? `${currentWeight} kg today (${fmtDelta(currentWeight - startWeight, ' kg')} vs Day 1)`
+    : changeStr;
 
-  const byMode: Record<JourneyMode, { composition: string; muscle: string; energy: string }> = {
+  const hasWaists = startWaist != null && currentWaist != null;
+  const waistProgress = hasWaists
+    ? `${currentWaist} cm today (${fmtDelta(currentWaist! - startWaist!, ' cm')} vs Day 1)`
+    : 'Log a waist measurement to see this';
+
+  const byMode: Record<JourneyMode, { composition: string; energy: string }> = {
     CUT: {
       composition: 'Body fat percentage trending down as the caloric deficit progresses.',
-      muscle: 'Preserved through progressive overload and a high-protein anchor.',
       energy: 'Occasional afternoon dips are normal; stabilizes as the body adapts to the deficit.',
     },
     BULK: {
       composition: 'Lean mass share increasing; some fat gain is expected with a clean surplus.',
-      muscle: 'Actively growing via progressive overload and a caloric surplus.',
       energy: 'Generally high with consistent fueling and recovery.',
     },
     FOCUS: {
       composition: 'Held steady — this mode optimizes the nervous system, not body composition.',
-      muscle: 'Maintained or slightly increased through heavy compound work.',
       energy: 'Peaks around scheduled heavy sessions; prioritize rest between them.',
     },
     RECOMP: {
       composition: 'Slow simultaneous shift: fat down, muscle steady or slightly up.',
-      muscle: 'Maintained or gained despite a mild deficit, via high protein + heavy lifting.',
       energy: 'Moderate; consistency matters more than any single day.',
     },
     HABIT: {
       composition: 'Not a primary target in this mode — the goal is showing up.',
-      muscle: 'Maintained through consistent, moderate training.',
       energy: 'Improves steadily as sleep, steps and attendance become routine.',
     },
   };
 
   const m = byMode[mode];
 
+  const strengthBaseline = 'Not captured at journey start';
+  const strengthTarget = focusLift?.summary?.includes('% of') ? 'Set in your plan' : 'Not set';
+  const strengthProgress = focusLift ? (focusLift.summary || `1RM: ${focusLift.estimated_1rm}kg`) : 'Log a set on your focus lift to see this';
+  const strengthMechanism = focusLift ? `Tracked via logged PRs on ${focusLift.exercise}` : 'Progressive overload + protein intake';
+
   return [
-    ['Body Weight', hasWeights ? `${startWeight} kg` : '--', hasWeights ? `${targetWeight} kg` : 'Not set', changeStr, 'Weekly rate paced from your plan', hasWeights ? 'High' : 'Estimated'],
-    ['Body Composition', 'Baseline', 'Trending toward goal', m.composition, 'Tracked via weight + measurements', 'Estimated'],
-    ['Muscle Mass', 'Baseline', 'Maintained / Growing', m.muscle, 'Progressive overload + protein intake', 'Estimated'],
+    ['Body Weight', hasWeights ? `${startWeight} kg` : '--', hasWeights ? `${targetWeight} kg` : 'Not set', weightProgress, 'Weekly rate paced from your plan', currentWeight != null ? 'Live' : 'Estimated'],
+    ['Waist Circumference', startWaist != null ? `${startWaist} cm` : '--', 'Trending toward goal', waistProgress, m.composition, hasWaists ? 'Live' : 'Log measurements to enable'],
+    ['Key Lift Strength', strengthBaseline, strengthTarget, strengthProgress, strengthMechanism, focusLift ? 'Live' : 'No PRs logged yet'],
     ['Energy & Recovery', 'Variable', 'Stable & consistent', m.energy, 'Sleep, hydration, and adherence', 'Estimated'],
   ] as const;
 }
@@ -251,10 +278,14 @@ export default function ExpectationsPage() {
 
   const startWeight = program?.start_weight_kg ?? pacing?.velocity?.start_weight;
   const targetWeight = program?.target_weight_kg ?? pacing?.target_weight ?? pacing?.velocity?.expected_final_weight;
+  const currentWeight = pacing?.velocity?.rolling_7_avg;
+  const startWaist = pacing?.starting_waist;
+  const currentWaist = pacing?.current_waist;
+  const focusLift = pacing?.strength?.tracked_lifts?.[0] || null;
 
   const benchmarks = useMemo(
-    () => getBenchmarkRows(mode, startWeight, targetWeight),
-    [mode, startWeight, targetWeight]
+    () => getBenchmarkRows(mode, startWeight, targetWeight, currentWeight, startWaist, currentWaist, focusLift),
+    [mode, startWeight, targetWeight, currentWeight, startWaist, currentWaist, focusLift]
   );
   const phases = useMemo(() => getPhases(mode, duration, currentDay), [mode, duration, currentDay]);
   const laws = useMemo(() => getModeLaws(mode), [mode]);
@@ -266,7 +297,7 @@ export default function ExpectationsPage() {
       <div className={styles.emptyState}>
         <div>
           <strong>No active plan yet.</strong>
-          <p style={{ margin: '0.35rem 0 0' }}>Start a journey to see milestones and expectations tailored to your mode and duration.</p>
+          <p className={styles.emptyStateHint}>Start a journey to see milestones and expectations tailored to your mode and duration.</p>
         </div>
         <button type="button" className={styles.startBtn} onClick={() => setIsModalOpen(true)}>
           <SlidersHorizontal size={15} /> Select a Plan
@@ -297,7 +328,7 @@ export default function ExpectationsPage() {
                 <th className={styles.th}>Metric</th>
                 <th className={styles.th}>Day 1 Baseline</th>
                 <th className={styles.th}>Day {duration} Target</th>
-                <th className={styles.th}>Expected Change</th>
+                <th className={styles.th}>Progress</th>
                 <th className={styles.th}>Primary Mechanism</th>
                 <th className={styles.th}>Confidence</th>
               </tr>
@@ -319,9 +350,9 @@ export default function ExpectationsPage() {
       </section>
 
       <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem' }}>
-          <h2 className={styles.sectionTitle} style={{ margin: 0 }}>2. Journey timeline</h2>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <div className={styles.timelineHeaderRow}>
+          <h2 className={`${styles.sectionTitle} ${styles.timelineHeaderTitle}`}>2. Journey timeline</h2>
+          <span className={styles.timelineMeta}>
             Current Progress: Day {currentDay} of {duration}
           </span>
         </div>
@@ -332,17 +363,11 @@ export default function ExpectationsPage() {
                 {phases.map((p) => (
                   <th
                     key={p.label}
-                    className={styles.th}
-                    style={{
-                      background: p.isCurrent ? 'rgba(16, 185, 129, 0.12)' : undefined,
-                      borderBottom: p.isCurrent ? '2px solid var(--color-primary)' : undefined,
-                    }}
+                    className={`${styles.th} ${p.isCurrent ? styles.thCurrent : ''}`}
                   >
                     <div>{p.label}</div>
                     {p.isCurrent && (
-                      <span style={{ display: 'inline-block', fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 800, marginTop: '2px' }}>
-                        ● Active (Day {currentDay})
-                      </span>
+                      <span className={styles.activeLabel}>● Active (Day {currentDay})</span>
                     )}
                   </th>
                 ))}
@@ -353,10 +378,7 @@ export default function ExpectationsPage() {
                 {phases.map((p) => (
                   <td
                     key={p.label}
-                    className={styles.td}
-                    style={{
-                      background: p.isCurrent ? 'rgba(16, 185, 129, 0.04)' : undefined,
-                    }}
+                    className={`${styles.td} ${p.isCurrent ? styles.tdCurrent : ''}`}
                   >
                     {p.text}
                   </td>

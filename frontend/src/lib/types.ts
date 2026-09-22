@@ -349,6 +349,14 @@ export interface DashboardStats {
     program_length?: number;
     program_completion_percent?: number;
   };
+  daily_log?: {
+    steps?: number;
+    sleep_hours?: number;
+    sleep_quality?: number | null;
+    energy_level?: number | null;
+    recovery_notes?: string;
+  };
+  weekly_review?: any[];
   journey_pacing?: JourneyPacingData;
   adherence?: DashboardAdherence;
 }
@@ -373,7 +381,10 @@ export interface DashboardAdherence {
   protein: AdherenceMetricItem;
   water: AdherenceMetricItem;
   cardio: AdherenceMetricItem;
+  steps?: AdherenceMetricItem;
+  sleep?: AdherenceMetricItem;
 }
+
 
 export type JourneyMode = 'CUT' | 'BULK' | 'FOCUS' | 'RECOMP' | 'HABIT';
 export type PacingStatus = 'ON_TRACK' | 'PACING_ALERT' | 'OFF_TRACK' | 'NO_PROGRAM';
@@ -437,8 +448,33 @@ export interface JourneyPacingData {
       summary?: string;
     }>;
   } | null;
+  recovery?: {
+    status: string;
+    score: number;
+    message: string;
+    avg_sleep_hours?: number | null;
+    target_sleep_hours?: number;
+    avg_daily_steps?: number | null;
+    target_daily_steps?: number;
+    avg_energy?: number | null;
+    fatigue_debt_detected?: boolean;
+  } | null;
   trajectory_curve: TrajectoryPoint[];
 }
+
+export interface DailyLog {
+  id: string;
+  user: string;
+  date: string;
+  steps?: number | null;
+  sleep_hours?: number | null;
+  sleep_quality?: number | null;
+  energy_level?: number | null;
+  recovery_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 
 export interface JourneyHistoryEntry {
   id: string;

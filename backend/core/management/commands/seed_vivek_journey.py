@@ -17,7 +17,7 @@ from workouts.models import (
     WorkoutSession, WorkoutExercise, WorkoutSet, CardioEntry,
 )
 from nutrition.models import MacroTarget, NutritionDay, MealEntry
-from progress.models import WeightEntry, BodyMeasurement, PersonalRecord
+from progress.models import WeightEntry, BodyMeasurement, PersonalRecord, DailyLog
 
 VIVEK_EMAIL = "vivek.singh@talentelgia.com"
 
@@ -331,7 +331,7 @@ class Command(BaseCommand):
         CardioEntry.objects.get_or_create(user=user, date=date(2026, 9, 17), modality='TREADMILL',
             defaults={'duration_minutes': 21, 'intensity': 'Zone 2', 'target_zone': '10% incline, 5 km/h', 'completed': True})
 
-        # ---- 7. Nutrition: Option A macro target + Days 1-4 logged totals -----
+        # ---- 7. Nutrition: Option A macro target + Days 1-7 logged totals -----
         target, _ = MacroTarget.objects.get_or_create(user=user)
         target.daily_calories, target.protein_g, target.carbs_g, target.fat_g, target.water_ml = 2160, 165, 264, 43, 3500
         target.save()
@@ -341,6 +341,9 @@ class Command(BaseCommand):
             (date(2026, 9, 15), 2250, 93, 315, 80, 3500),
             (date(2026, 9, 16), 1935, 95, 250, 70, 3500),
             (date(2026, 9, 17), 2220, 120, 290, 77, 3500),
+            (date(2026, 9, 18), 1917, 124, 230, 65, 3500),
+            (date(2026, 9, 19), 1934, 128, 220, 60, 3000),
+            (date(2026, 9, 20), 3195, 126, 380, 110, 3500),
         ]
         for d, cal, prot, carb, fat, water in nutrition_log:
             nd, _ = NutritionDay.objects.get_or_create(user=user, date=d, defaults={'water_consumed_ml': water})
@@ -351,13 +354,14 @@ class Command(BaseCommand):
                     calories=cal, protein_g=prot, carbs_g=carb, fat_g=fat,
                 )
 
-        # ---- 8. Progress tracker: weight & measurements (Days 1-4) ------------
+        # ---- 8. Progress tracker: weight & measurements (Days 1-5) ------------
         progress_log = [
             # date, weight, waist, chest, arm, shoulders, hips, thighs, calves, neck
             (date(2026, 9, 14), 77.76, 93.0, 101.0, 31.0, 118.0, 99.0, 57.0, 37.0, 38.5),
             (date(2026, 9, 15), 77.84, 92.5, 101.4, 31.2, 118.2, 98.8, 57.1, 37.0, 38.5),
             (date(2026, 9, 16), 78.26, 92.0, 102.0, 31.5, 118.8, 98.5, 57.4, 37.2, 38.4),
             (date(2026, 9, 17), 78.60, 91.0, 101.5, 32.0, 119.5, 98.2, 57.8, 37.5, 38.3),
+            (date(2026, 9, 18), 77.84, 91.0, 101.5, 32.0, 119.5, 98.0, 57.8, 37.5, 38.3),
         ]
         for d, weight, waist, chest, arm, shld, hips, thg, calf, neck in progress_log:
             WeightEntry.objects.get_or_create(user=user, date=d, defaults={'weight_kg': weight})
@@ -382,7 +386,39 @@ class Command(BaseCommand):
                 m.calf_right_cm = calf
                 m.save()
 
+        # ---- 9. Daily Log: Steps, Sleep & Recovery Notes (Days 1–7) -----------
+        daily_entries = [
+            # date, steps, sleep_hours, sleep_quality, energy_level, recovery_notes
+            (date(2026, 9, 14), 8500, 8.0, 4, 2, 'Day 1 baseline: 77.76 kg. Push workout & 16.5m cardio completed.'),
+            (date(2026, 9, 15), 6500, 8.0, 4, 4, 'Day 2: 77.84 kg. Back session & 22m cardio (12m bike + 10m incline treadmill).'),
+            (date(2026, 9, 16), 6500, 8.0, 4, 4, 'Day 3: 78.26 kg. Quads/hams/calves & 18m cross trainer + bike.'),
+            (date(2026, 9, 17), 5000, 8.0, 4, 4, 'Day 4: 78.60 kg. Shoulders/arms & 21m incline treadmill done.'),
+            (date(2026, 9, 18), 5500, 8.0, 4, 4, 'Day 5: 77.84 kg. Upper/Legs session & 23m cardio completed.'),
+            (date(2026, 9, 19), 7000, 7.0, 5, 5, 'Day 6: Rest day. Brisk outdoor walk; 7,000 steps achieved.'),
+            (date(2026, 9, 20), 7500, 7.0, 4, 4, 'Day 7: Rest day. Active recovery walk; 7,500 steps achieved.'),
+        ]
+        for d, steps, sleep_h, sq, energy, notes in daily_entries:
+            dl, created = DailyLog.objects.get_or_create(
+                user=user, date=d,
+                defaults={
+                    'steps': steps,
+                    'sleep_hours': sleep_h,
+                    'sleep_quality': sq,
+                    'energy_level': energy,
+                    'recovery_notes': notes,
+                }
+            )
+            if not created:
+                dl.steps = steps
+                dl.sleep_hours = sleep_h
+                dl.sleep_quality = sq
+                dl.energy_level = energy
+                dl.recovery_notes = notes
+                dl.save()
+
         self.stdout.write(self.style.SUCCESS(
             f"Seeded {user.email}: 60-day journey (day {program.current_day}/60), "
-            f"{len(nutrition_log)} nutrition days, {len(progress_log)} weight/measurement entries."
+            f"{len(nutrition_log)} nutrition days, {len(progress_log)} weight entries, "
+            f"{len(daily_entries)} daily step/sleep recovery logs."
         ))
+

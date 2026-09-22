@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/Modal';
 import { MetricChart } from '@/components/MetricChart';
 import { RightPathCard } from '@/components/RightPathCard';
 import { PlanSelectorModal } from '@/components/PlanSelectorModal';
+import styles from './progress.module.css';
 
 export default function ProgressPage() {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
@@ -85,17 +86,17 @@ export default function ProgressPage() {
   const delta = currentWeight && startWeight ? (currentWeight - startWeight).toFixed(1) : '0';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={styles.page}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className={styles.header}>
         <div>
-          <h1 style={{ fontSize: '2rem' }}>Progress & Analytics</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+          <h1 className={styles.title}>Progress & Analytics</h1>
+          <p className={styles.subtitle}>
             Quantitative body composition changes, weight trends, and 1RM strength progression.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className={styles.headerActions}>
           <Button variant="secondary" onClick={() => setPlanModalOpen(true)}>
             <SlidersHorizontal size={16} />
             <span>Mode &amp; Plan</span>
@@ -114,39 +115,39 @@ export default function ProgressPage() {
       />
 
       {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-        <Card hoverable style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className={styles.summaryGrid}>
+        <Card hoverable className={styles.summaryCard}>
+          <div className={`${styles.iconWrap} ${styles.iconWrapEmerald}`}>
             <Scale size={26} color="var(--color-primary)" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Current Weight</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
-              {currentWeight} <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)' }}>kg</span>
+            <div className={styles.cardLabel}>Current Weight</div>
+            <div className={styles.cardValue}>
+              {currentWeight} <span className={styles.cardUnit}>kg</span>
             </div>
           </div>
         </Card>
 
-        <Card hoverable style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(6, 182, 212, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Card hoverable className={styles.summaryCard}>
+          <div className={`${styles.iconWrap} ${styles.iconWrapCyan}`}>
             <TrendingUp size={26} color="var(--color-cyan)" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>14-Day Change</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: Number(delta) <= 0 ? 'var(--color-primary-light)' : 'var(--color-amber)', fontFamily: 'Outfit, sans-serif' }}>
-              {Number(delta) > 0 ? `+${delta}` : delta} <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)' }}>kg</span>
+            <div className={styles.cardLabel}>14-Day Change</div>
+            <div className={`${styles.cardValue} ${Number(delta) <= 0 ? styles.deltaPositive : styles.deltaNegative}`}>
+              {Number(delta) > 0 ? `+${delta}` : delta} <span className={styles.cardUnit}>kg</span>
             </div>
           </div>
         </Card>
 
-        <Card hoverable style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Card hoverable className={styles.summaryCard}>
+          <div className={`${styles.iconWrap} ${styles.iconWrapAmber}`}>
             <Trophy size={26} color="#FBBF24" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Personal Records</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
-              {prs.length} <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)' }}>All-Time</span>
+            <div className={styles.cardLabel}>Personal Records</div>
+            <div className={styles.cardValue}>
+              {prs.length} <span className={styles.cardUnit}>All-Time</span>
             </div>
           </div>
         </Card>
@@ -166,39 +167,39 @@ export default function ProgressPage() {
 
       {/* Personal Records 1RM Hall of Fame */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+        <div className={styles.sectionHeader}>
           <Trophy size={20} color="var(--color-primary)" />
-          <h2 style={{ fontSize: '1.35rem' }}>Personal Records & Estimated 1RMs</h2>
+          <h2 className={styles.sectionTitle}>Personal Records & Estimated 1RMs</h2>
         </div>
 
         <Card>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '10px' }}>Exercise</th>
-                  <th style={{ padding: '10px' }}>Muscle Group</th>
-                  <th style={{ padding: '10px' }}>Best Lift</th>
-                  <th style={{ padding: '10px' }}>Estimated 1RM</th>
-                  <th style={{ padding: '10px' }}>Date Achieved</th>
+                <tr className={styles.theadRow}>
+                  <th className={styles.th}>Exercise</th>
+                  <th className={styles.th}>Muscle Group</th>
+                  <th className={styles.th}>Best Lift</th>
+                  <th className={styles.th}>Estimated 1RM</th>
+                  <th className={styles.th}>Date Achieved</th>
                 </tr>
               </thead>
               <tbody>
                 {prs.map((pr) => (
-                  <tr key={pr.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '12px 10px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  <tr key={pr.id} className={styles.tr}>
+                    <td className={styles.tdName}>
                       {pr.exercise_name}
                     </td>
-                    <td style={{ padding: '12px 10px' }}>
+                    <td className={styles.td}>
                       <Badge variant="emerald">{pr.primary_muscle}</Badge>
                     </td>
-                    <td style={{ padding: '12px 10px', fontWeight: 700 }}>
-                      <span style={{ color: 'var(--color-cyan)' }}>{pr.max_weight_kg} kg</span> × {pr.reps} reps
+                    <td className={styles.tdLift}>
+                      <span className={styles.cyanText}>{pr.max_weight_kg} kg</span> × {pr.reps} reps
                     </td>
-                    <td style={{ padding: '12px 10px', fontWeight: 800, color: 'var(--color-primary)', fontSize: '1rem' }}>
+                    <td className={styles.td1rm}>
                       {pr.estimated_one_rep_max} kg
                     </td>
-                    <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>
+                    <td className={styles.tdDate}>
                       {pr.achieved_at}
                     </td>
                   </tr>
@@ -211,27 +212,14 @@ export default function ProgressPage() {
 
       {/* Body Measurements */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className={styles.sectionHeaderRow}>
+          <div className={styles.sectionHeaderLeft}>
             <Ruler size={20} color="var(--color-cyan)" />
-            <h2 style={{ fontSize: '1.35rem' }}>Body Circumference Measurements</h2>
+            <h2 className={styles.sectionTitle}>Body Circumference Measurements</h2>
           </div>
           <Link
             href="/app/measurements"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              color: 'var(--color-primary)',
-              textDecoration: 'none',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(16, 185, 129, 0.1)',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
-              transition: 'all 0.2s ease',
-            }}
+            className={styles.fullMeasurementsLink}
           >
             <span>Full Measurements &amp; Analytics</span>
             <ArrowRight size={14} />
@@ -240,13 +228,13 @@ export default function ProgressPage() {
 
         <Card>
           {measurements.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No circumference logs recorded.</p>
+            <p className={styles.emptyText}>No circumference logs recorded.</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+            <div className={styles.measurementsGrid}>
               {measurements.map((m) => (
-                <div key={m.id} style={{ padding: '12px 14px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{m.date}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', fontSize: '0.85rem' }}>
+                <div key={m.id} className={styles.measurementCard}>
+                  <div className={styles.measurementDate}>{m.date}</div>
+                  <div className={styles.measurementStats}>
                     {m.chest_cm && <div>Chest: <strong>{m.chest_cm} cm</strong></div>}
                     {m.waist_cm && <div>Waist: <strong>{m.waist_cm} cm</strong></div>}
                     {m.shoulders_cm && <div>Shoulders: <strong>{m.shoulders_cm} cm</strong></div>}
@@ -270,7 +258,7 @@ export default function ProgressPage() {
         const resolvedStartWeight = pacing?.velocity?.start_weight ?? (startWeight > 0 ? startWeight : null);
         const resolvedStartWaist = pacing?.starting_waist ?? ([...measurements].reverse().find((m) => m.waist_cm != null)?.waist_cm ?? null);
         const targetW = pacing?.target_weight ?? pacing?.velocity?.expected_final_weight ?? null;
-        
+
         let expectedDeltaStr = '--';
         let expectedDeltaLabel = 'Expected Change';
         if (mode === 'BULK') expectedDeltaLabel = 'Expected Gain';
@@ -336,55 +324,55 @@ export default function ProgressPage() {
 
         return (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+            <div className={styles.sectionHeader}>
               <Calendar size={20} color="var(--color-primary)" />
-              <h2 style={{ fontSize: '1.35rem' }}>{duration}-Day Target &amp; Milestone Checkpoints</h2>
+              <h2 className={styles.sectionTitle}>{duration}-Day Target &amp; Milestone Checkpoints</h2>
             </div>
             <Card>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div className={styles.statsGrid}>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Starting Weight</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>
+                  <div className={styles.statLabel}>Starting Weight</div>
+                  <div className={styles.statValue}>
                     {resolvedStartWeight != null ? `${resolvedStartWeight} kg` : '—'}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>{duration}-Day Target Range</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem', color: 'var(--color-primary)' }}>
+                  <div className={styles.statLabel}>{duration}-Day Target Range</div>
+                  <div className={`${styles.statValue} ${styles.statValueAccent}`}>
                     {targetRangeStr}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>{expectedDeltaLabel}</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>
+                  <div className={styles.statLabel}>{expectedDeltaLabel}</div>
+                  <div className={styles.statValue}>
                     {expectedDeltaStr}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Starting Waist</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '.25rem' }}>
+                  <div className={styles.statLabel}>Starting Waist</div>
+                  <div className={styles.statValue}>
                     {resolvedStartWaist != null ? `${resolvedStartWaist} cm` : '—'}
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gap: 0, borderTop: '1px solid var(--border-subtle)' }}>
+              <div className={styles.checkpointList}>
                 {checkpointItems.map(({ day, title, note }) => {
                   const isPast = currentDay > day;
                   const isCurrent = currentDay <= day && (day === q1 || currentDay > (checkpointItems.find((c) => c.day < day)?.day || 0));
                   return (
-                    <div key={day} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 2fr', gap: '1rem', padding: '.75rem 0', borderBottom: '1px solid var(--border-subtle)', fontSize: '.85rem', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <strong style={{ color: isPast ? 'var(--text-muted)' : 'var(--color-primary)' }}>Day {day}</strong>
-                        {isPast && <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-primary)', padding: '2px 5px', borderRadius: 4, fontWeight: 700 }}>Passed</span>}
-                        {isCurrent && <span style={{ fontSize: '0.65rem', background: 'rgba(14, 165, 233, 0.15)', color: '#0EA5E9', padding: '2px 5px', borderRadius: 4, fontWeight: 700 }}>Next</span>}
+                    <div key={day} className={styles.checkpointRow}>
+                      <div className={styles.checkpointDayWrap}>
+                        <strong className={isPast ? `${styles.checkpointDay} ${styles.checkpointDayPast}` : styles.checkpointDay}>Day {day}</strong>
+                        {isPast && <span className={`${styles.statusBadge} ${styles.statusBadgePassed}`}>Passed</span>}
+                        {isCurrent && <span className={`${styles.statusBadge} ${styles.statusBadgeNext}`}>Next</span>}
                       </div>
                       <strong>{title}</strong>
-                      <span style={{ color: 'var(--text-secondary)' }}>{note}</span>
+                      <span className={styles.checkpointNote}>{note}</span>
                     </div>
                   );
                 })}
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '.78rem', marginTop: '.85rem' }}>
+              <p className={styles.photoNote}>
                 Take front, side and back photos on Days 1, {q1}, {q2}, {q3} and {q4} under consistent lighting and a relaxed posture.
               </p>
             </Card>
@@ -394,9 +382,9 @@ export default function ProgressPage() {
 
       {/* Log Weight Modal */}
       <Modal isOpen={logWeightModal} onClose={() => setLogWeightModal(false)} title="Log Daily Weight">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className={styles.modalForm}>
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Weight (kg)
             </label>
             <input
@@ -404,23 +392,12 @@ export default function ProgressPage() {
               step="0.1"
               value={newWeight}
               onChange={(e) => setNewWeight(parseFloat(e.target.value) || 0)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                fontSize: '1.1rem',
-                fontWeight: 700,
-                outline: 'none',
-              }}
+              className={`${styles.formInput} ${styles.formInputWeight}`}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Body Fat % (Optional)
             </label>
             <input
@@ -428,21 +405,12 @@ export default function ProgressPage() {
               step="0.1"
               value={newBf}
               onChange={(e) => setNewBf(parseFloat(e.target.value) || 0)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.formInput}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Notes
             </label>
             <textarea
@@ -450,21 +418,11 @@ export default function ProgressPage() {
               placeholder="e.g. Morning weighed fasted after workout day..."
               value={newNotes}
               onChange={(e) => setNewNotes(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                resize: 'none',
-              }}
+              className={`${styles.formInput} ${styles.formTextarea}`}
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+          <div className={styles.formActions}>
             <Button variant="secondary" onClick={() => setLogWeightModal(false)}>
               Cancel
             </Button>

@@ -9,9 +9,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/lib/authContext';
 
 export default function TrainerHubPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [clients, setClients] = useState<TrainerClientAssignment[]>([]);
   const [assignedWorkouts, setAssignedWorkouts] = useState<AssignedWorkout[]>([]);
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -122,7 +124,7 @@ export default function TrainerHubPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <Badge variant="amber">Head Strength Coach Portal</Badge>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>•</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Marcus Rivera</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user?.full_name || 'Trainer'}</span>
           </div>
           <h1 style={{ fontSize: '2rem' }}>Trainer Hub & Client Roster</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
@@ -239,7 +241,7 @@ export default function TrainerHubPage() {
               {aw.trainer_feedback && (
                 <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '10px 14px', borderRadius: 'var(--radius-md)' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-amber)', textTransform: 'uppercase' }}>
-                    Coach Marcus Feedback:
+                    Coach {user?.full_name || 'Trainer'} Feedback:
                   </div>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', marginTop: '4px', fontStyle: 'italic' }}>
                     "{aw.trainer_feedback}"

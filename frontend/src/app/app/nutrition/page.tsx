@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Utensils, Plus, Droplets, Trash2, Calendar, Sparkles } from 'lucide-react';
+import { Plus, Droplets, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { NutritionDay, MacroTarget, MealEntry, JourneyPacingData, JourneyMode } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { MacroRing } from '@/components/MacroRing';
+import styles from './nutrition.module.css';
 
+// Sourced from the user's "New start.xlsx" Diet Plan sheet — content kept verbatim.
 const optionA = [
   ['Meal 1: Pre-Workout', 'Black Coffee + Soaked Almonds + Banana', '1 mug coffee + 6 almonds + 1 banana', 150, 3, 28, 4],
   ['Meal 2: Breakfast', 'Rolled Oats with Toned Milk & Cinnamon', '65g oats + 200ml toned milk', 340, 14, 54, 6],
@@ -19,6 +21,8 @@ const optionA = [
   ['Meal 5: Evening Snack', 'Homemade Low-Fat Curd (Dahi) + Roasted Chana', '200g dahi + 35g roasted chana', 240, 17, 27, 6],
   ['Meal 6: Dinner', 'Pan-Seared Chicken Breast / Paneer + Rice + Sabzi', '150g chicken (or 130g paneer) + 160g rice + sabzi', 445, 50, 52, 6],
 ] as const;
+const optionATotal = { calories: 2160, protein: 165, carbs: 264, fat: 43 };
+
 const optionB = [
   ['Meal 1: Pre-Workout', 'Black Coffee + 5 Soaked Almonds', '1 mug coffee + 5 almonds', 40, 1, 1, 3],
   ['Meal 2: Breakfast', 'Rolled Oats with Toned Milk & Boiled Eggs', '55g oats + 180ml milk + 2 whole eggs', 450, 26, 49, 16],
@@ -27,6 +31,8 @@ const optionB = [
   ['Meal 5: Evening Snack', 'Dry Roasted Chana + Low-Fat Dahi', '45g roasted chana + 180g homemade curd', 280, 19, 33, 6],
   ['Meal 6: Dinner', 'Chicken & Egg / Soya Bhurji + Rice + Sabzi', '65g chicken + egg white (or soya + paneer) + 200g rice + sabzi', 535, 44, 70, 10],
 ] as const;
+const optionBTotal = { calories: 1920, protein: 131, carbs: 255, fat: 41 };
+
 const staples = [
   ['Soya Chunks (Dry)', '40g dry weighed', '21g', 138, 'Tier 1: 52% protein (soak & squeeze)'],
   ['Whole Farm Eggs', '3 large eggs', '19g', 210, 'Tier 1: bioavailable complete protein'],
@@ -36,6 +42,7 @@ const staples = [
   ['Roasted Chana (Bengal Gram)', '50g dry weighed', '11g', 180, 'Tier 2: low-GI high-fiber portable snack'],
   ['Rolled Oats (Plain)', '60g dry weighed', '8g', 230, 'Tier 3: beta-glucan heart & sustained energy'],
 ] as const;
+
 function getAdjustmentProtocol(mode: JourneyMode) {
   if (mode === 'BULK') {
     return [
@@ -60,9 +67,6 @@ function getAdjustmentProtocol(mode: JourneyMode) {
     ['Week 3: Too Fast (>0.80 kg/wk)', 'Weight loss > 0.80 kg/week for 2 weeks', 'Excessive deficit risking muscle loss, strength decline, and metabolic crash.', 'Increase daily intake by +150 kcal (add 35g oats or 1 banana + 100g curd).'],
   ] as const;
 }
-
-const th2: React.CSSProperties = { fontSize: '.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', textAlign: 'left', padding: '.5rem .5rem' };
-const td2: React.CSSProperties = { padding: '.55rem .5rem', fontSize: '.82rem', borderTop: '1px solid var(--border-subtle)', verticalAlign: 'top' };
 
 export default function NutritionPage() {
   const [data, setData] = useState<{ day: NutritionDay; targets: MacroTarget } | null>(null);
@@ -149,13 +153,20 @@ export default function NutritionPage() {
     SNACK: 'Snacks & Fuel',
   };
 
+  const duration = pacing?.duration_days || 60;
+  const mode = (pacing?.mode || 'CUT') as JourneyMode;
+  const modeLabel = pacing?.mode_label || 'Nutrition';
+  const targetKcal = data?.targets?.daily_calories || 2160;
+  const targetProtein = data?.targets?.protein_g || 150;
+  const adjustmentRows = getAdjustmentProtocol(mode);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={styles.page}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className={styles.header}>
         <div>
-          <h1 style={{ fontSize: '2rem' }}>Nutrition & Macro Tracking</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+          <h1 className={styles.title}>Nutrition & Macro Tracking</h1>
+          <p className={styles.subtitle}>
             Maintain optimal caloric and macronutrient fuel for muscle recovery and performance.
           </p>
         </div>
@@ -167,12 +178,12 @@ export default function NutritionPage() {
       </div>
 
       {/* Macro Rings Summary Card */}
-      <Card elevated style={{ padding: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
+      <Card elevated className={styles.macroCard}>
+        <div className={styles.macroRow}>
           <MacroRing
             label="Calories"
             current={data?.day.total_calories || 0}
-            target={data?.targets.daily_calories || 2600}
+            target={targetKcal}
             unit=" kcal"
             color="#10B981"
             size={135}
@@ -181,7 +192,7 @@ export default function NutritionPage() {
           <MacroRing
             label="Protein"
             current={data?.day.total_protein || 0}
-            target={data?.targets.protein_g || 180}
+            target={targetProtein}
             unit="g"
             color="#06B6D4"
             size={120}
@@ -209,28 +220,28 @@ export default function NutritionPage() {
       </Card>
 
       {/* Water Hydration Tracker */}
-      <Card style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Card className={styles.hydrationCard}>
+        <div className={styles.hydrationLeft}>
+          <div className={styles.hydrationIconWrap}>
             <Droplets size={26} color="var(--color-blue)" />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.15rem' }}>Daily Hydration</h3>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+            <h3 className={styles.hydrationTitle}>Daily Hydration</h3>
+            <div className={styles.hydrationTarget}>
               Target: {(data?.targets.water_ml || 3200) / 1000}L per day
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#38BDF8', fontFamily: 'Outfit, sans-serif' }}>
+        <div className={styles.hydrationRight}>
+          <div className={styles.hydrationValueWrap}>
+            <div className={styles.hydrationValue}>
               {((data?.day.water_consumed_ml || 0) / 1000).toFixed(2)} L
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Logged Today</div>
+            <div className={styles.hydrationLabel}>Logged Today</div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className={styles.hydrationButtons}>
             <Button size="sm" variant="secondary" onClick={() => handleAddWater(250)}>
               +250ml (Cup)
             </Button>
@@ -242,16 +253,16 @@ export default function NutritionPage() {
       </Card>
 
       {/* Daily Meals Breakdown */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div className={styles.mealsList}>
         {mealCategories.map((cat) => {
           const categoryMeals = data?.day.meals.filter((m) => m.meal_type === cat) || [];
           const catCalories = categoryMeals.reduce((acc, m) => acc + m.calories, 0);
 
           return (
             <Card key={cat}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h3 style={{ fontSize: '1.15rem' }}>{categoryTitles[cat]}</h3>
+              <div className={styles.mealCardHeader}>
+                <div className={styles.mealCardHeaderLeft}>
+                  <h3 className={styles.mealCardTitle}>{categoryTitles[cat]}</h3>
                   <Badge variant="emerald">{catCalories} kcal</Badge>
                 </div>
 
@@ -268,34 +279,22 @@ export default function NutritionPage() {
               </div>
 
               {categoryMeals.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                  No food items logged for this meal yet.
-                </p>
+                <p className={styles.mealEmpty}>No food items logged for this meal yet.</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className={styles.mealItemsList}>
                   {categoryMeals.map((meal) => (
-                    <div
-                      key={meal.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '10px 14px',
-                        background: 'var(--bg-surface-elevated)',
-                        borderRadius: 'var(--radius-md)',
-                      }}
-                    >
+                    <div key={meal.id} className={styles.mealItem}>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{meal.name}</div>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                          <span>P: <strong style={{ color: 'var(--color-cyan)' }}>{meal.protein_g}g</strong></span>
-                          <span>C: <strong style={{ color: 'var(--color-amber)' }}>{meal.carbs_g}g</strong></span>
-                          <span>F: <strong style={{ color: 'var(--color-violet)' }}>{meal.fat_g}g</strong></span>
+                        <div className={styles.mealItemName}>{meal.name}</div>
+                        <div className={styles.mealItemMacros}>
+                          <span>P: <strong className={styles.mealItemMacroProtein}>{meal.protein_g}g</strong></span>
+                          <span>C: <strong className={styles.mealItemMacroCarbs}>{meal.carbs_g}g</strong></span>
+                          <span>F: <strong className={styles.mealItemMacroFat}>{meal.fat_g}g</strong></span>
                         </div>
                       </div>
 
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-primary)', fontFamily: 'Outfit, sans-serif' }}>
-                        {meal.calories} <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>kcal</span>
+                      <div className={styles.mealItemCalories}>
+                        {meal.calories} <span className={styles.mealItemCaloriesUnit}>kcal</span>
                       </div>
                     </div>
                   ))}
@@ -306,124 +305,134 @@ export default function NutritionPage() {
         })}
       </div>
 
-      {/* Dynamic Diet Blueprint (reference plan calibrated to user target) */}
-      {(() => {
-        const duration = pacing?.duration_days || 60;
-        const mode = (pacing?.mode || 'CUT') as JourneyMode;
-        const modeLabel = pacing?.mode_label || 'Nutrition';
-        const targetKcal = data?.targets?.daily_calories || 2160;
-        const targetProtein = data?.targets?.protein_g || 150;
-        const optBKcal = Math.round(targetKcal * 0.88);
-        const optBProtein = Math.max(110, Math.round(targetProtein * 0.85));
-        const adjustmentRows = getAdjustmentProtocol(mode);
+      {/* Diet Blueprint — reference plan from the user's own nutrition workbook */}
+      <div>
+        <div className={styles.blueprintHeader}>
+          <Sparkles size={20} color="var(--color-primary)" />
+          <h2 className={styles.blueprintTitle}>{duration}-Day {modeLabel} Blueprint</h2>
+        </div>
+        <p className={styles.blueprintIntro}>
+          Two fixed reference meal frameworks from your nutrition plan. Your live computed target today is ~{targetKcal.toLocaleString()} kcal, {targetProtein}g protein — use these as fueling templates and scale carbohydrate portions (rotis, rice, oats) up or down to bridge any gap to that target.
+        </p>
 
-        return (
-          <>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                <Sparkles size={20} color="var(--color-primary)" />
-                <h2 style={{ fontSize: '1.35rem' }}>{duration}-Day {modeLabel} Blueprint</h2>
+        <Card className={styles.blueprintCard}>
+          <div className={styles.blueprintCardHeader}>
+            <h3 className={styles.blueprintCardTitle}>Option A: High-Volume Training Day Fueling</h3>
+            <Badge variant="emerald">{optionATotal.calories.toLocaleString()} kcal &middot; {optionATotal.protein}g protein</Badge>
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th className={styles.th}>Meal Window</th><th className={styles.th}>Food &amp; Recipe</th><th className={styles.th}>Portion</th><th className={styles.th}>Kcal</th><th className={styles.th}>P</th><th className={styles.th}>C</th><th className={styles.th}>F</th></tr></thead>
+              <tbody>
+                {optionA.map((row, i) => (
+                  <tr key={i}>
+                    <td className={`${styles.td} ${styles.tdStrong}`}>{row[0]}</td>
+                    <td className={styles.td}>{row[1]}</td>
+                    <td className={`${styles.td} ${styles.tdMuted}`}>{row[2]}</td>
+                    <td className={styles.td}>{row[3]}</td>
+                    <td className={styles.td}>{row[4]}g</td>
+                    <td className={styles.td}>{row[5]}g</td>
+                    <td className={styles.td}>{row[6]}g</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>Reference Total</td>
+                  <td className={styles.td} colSpan={2} />
+                  <td className={`${styles.td} ${styles.tdTotal} ${styles.tdTotalPrimary}`}>{optionATotal.calories.toLocaleString()}</td>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionATotal.protein}g</td>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionATotal.carbs}g</td>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionATotal.fat}g</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card>
+          <div className={styles.blueprintCardHeader}>
+            <h3 className={styles.blueprintCardTitle}>Option B: Lower-Activity &amp; Budget Fueling</h3>
+            <Badge variant="cyan">{optionBTotal.calories.toLocaleString()} kcal &middot; {optionBTotal.protein}g protein</Badge>
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th className={styles.th}>Meal Window</th><th className={styles.th}>Food &amp; Recipe</th><th className={styles.th}>Portion</th><th className={styles.th}>Kcal</th><th className={styles.th}>P</th><th className={styles.th}>C</th><th className={styles.th}>F</th></tr></thead>
+              <tbody>
+                {optionB.map((row, i) => (
+                  <tr key={i}>
+                    <td className={`${styles.td} ${styles.tdStrong}`}>{row[0]}</td>
+                    <td className={styles.td}>{row[1]}</td>
+                    <td className={`${styles.td} ${styles.tdMuted}`}>{row[2]}</td>
+                    <td className={styles.td}>{row[3]}</td>
+                    <td className={styles.td}>{row[4]}g</td>
+                    <td className={styles.td}>{row[5]}g</td>
+                    <td className={styles.td}>{row[6]}g</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>Reference Total</td>
+                  <td className={styles.td} colSpan={2} />
+                  <td className={`${styles.td} ${styles.tdTotal} ${styles.tdTotalCyan}`}>{optionBTotal.calories.toLocaleString()}</td>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionBTotal.protein}g</td>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionBTotal.carbs}g</td>
+                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionBTotal.fat}g</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      {/* High-protein budget food staples cheat sheet */}
+      <div>
+        <h2 className={styles.sectionTitle}>High-Protein Budget Indian Food Staples</h2>
+        <Card>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th className={styles.th}>Food Staple</th><th className={styles.th}>Typical Serving</th><th className={styles.th}>Protein</th><th className={styles.th}>Calories</th><th className={styles.th}>Efficiency Tier &amp; Prep Cue</th></tr></thead>
+              <tbody>
+                {staples.map((row) => (
+                  <tr key={row[0]}>
+                    <td className={`${styles.td} ${styles.tdStrong}`}>{row[0]}</td>
+                    <td className={styles.td}>{row[1]}</td>
+                    <td className={`${styles.td} ${styles.tdProtein}`}>{row[2]}</td>
+                    <td className={styles.td}>{row[3]}</td>
+                    <td className={`${styles.td} ${styles.tdMuted}`}>{row[4]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      {/* 2-3 week calorie & metabolic adjustment protocol */}
+      <div>
+        <h2 className={styles.protocolTitle}>
+          The 2–3 Week Calorie &amp; Metabolic Adjustment Protocol — {pacing?.mode_label || 'Pacing Rules'}
+        </h2>
+        <Card>
+          <div className={styles.protocolGrid}>
+            {adjustmentRows.map((row) => (
+              <div key={row[0]} className={styles.protocolRow}>
+                <strong>{row[0]}</strong>
+                <span className={styles.protocolRowMuted}>{row[1]}</span>
+                <span className={styles.protocolRowMuted}>{row[2]}</span>
+                <span>{row[3]}</span>
               </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '.88rem', marginTop: '-.5rem', marginBottom: '1rem' }}>
-                Two reference meal frameworks calibrated around your target (~{targetKcal.toLocaleString()} kcal, {targetProtein}g protein). Scale carbohydrate portions (rotis, rice, oats) up or down to align with your daily needs.
-              </p>
-
-              <Card style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={{ fontSize: '1.05rem' }}>Option A: High-Volume Training Day Fueling</h3>
-                  <Badge variant="emerald">Target ~{targetKcal.toLocaleString()} kcal &middot; {targetProtein}g protein</Badge>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr><th style={th2}>Meal Window</th><th style={th2}>Food &amp; Recipe</th><th style={th2}>Portion</th><th style={th2}>Kcal</th><th style={th2}>P</th><th style={th2}>C</th><th style={th2}>F</th></tr></thead>
-                    <tbody>
-                      {optionA.map((row, i) => (
-                        <tr key={i}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={td2}>{row[4]}g</td><td style={td2}>{row[5]}g</td><td style={td2}>{row[6]}g</td></tr>
-                      ))}
-                      <tr><td style={{ ...td2, fontWeight: 800 }}>Reference Total</td><td style={td2} colSpan={2} /><td style={{ ...td2, fontWeight: 800, color: 'var(--color-primary)' }}>2,160</td><td style={{ ...td2, fontWeight: 800 }}>165g</td><td style={{ ...td2, fontWeight: 800 }}>264g</td><td style={{ ...td2, fontWeight: 800 }}>43g</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-
-              <Card>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={{ fontSize: '1.05rem' }}>Option B: Lower-Activity &amp; Budget Fueling</h3>
-                  <Badge variant="cyan">Target ~{optBKcal.toLocaleString()} kcal &middot; {optBProtein}g protein</Badge>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr><th style={th2}>Meal Window</th><th style={th2}>Food &amp; Recipe</th><th style={th2}>Portion</th><th style={th2}>Kcal</th><th style={th2}>P</th><th style={th2}>C</th><th style={th2}>F</th></tr></thead>
-                    <tbody>
-                      {optionB.map((row, i) => (
-                        <tr key={i}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={td2}>{row[4]}g</td><td style={td2}>{row[5]}g</td><td style={td2}>{row[6]}g</td></tr>
-                      ))}
-                      <tr><td style={{ ...td2, fontWeight: 800 }}>Reference Total</td><td style={td2} colSpan={2} /><td style={{ ...td2, fontWeight: 800, color: 'var(--color-cyan)' }}>1,920</td><td style={{ ...td2, fontWeight: 800 }}>131g</td><td style={{ ...td2, fontWeight: 800 }}>255g</td><td style={{ ...td2, fontWeight: 800 }}>41g</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
-
-            {/* High-protein budget food staples cheat sheet */}
-            <div>
-              <h2 style={{ fontSize: '1.15rem', marginBottom: '.75rem' }}>High-Protein Budget Indian Food Staples</h2>
-              <Card>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead><tr><th style={th2}>Food Staple</th><th style={th2}>Typical Serving</th><th style={th2}>Protein</th><th style={th2}>Calories</th><th style={th2}>Efficiency Tier &amp; Prep Cue</th></tr></thead>
-                    <tbody>
-                      {staples.map((row) => (
-                        <tr key={row[0]}><td style={{ ...td2, fontWeight: 700 }}>{row[0]}</td><td style={td2}>{row[1]}</td><td style={{ ...td2, color: 'var(--color-primary)', fontWeight: 700 }}>{row[2]}</td><td style={td2}>{row[3]}</td><td style={{ ...td2, color: 'var(--text-secondary)' }}>{row[4]}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </div>
-
-            {/* 2-3 week calorie & metabolic adjustment protocol */}
-            <div>
-              <h2 style={{ fontSize: '1.15rem', marginBottom: '.75rem' }}>
-                The 2–3 Week Calorie &amp; Metabolic Adjustment Protocol — {pacing?.mode_label || 'Pacing Rules'}
-              </h2>
-              <Card>
-                <div style={{ display: 'grid', gap: '.6rem' }}>
-                  {adjustmentRows.map((row) => (
-                    <div key={row[0]} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 0.9fr) minmax(150px, 0.9fr) 1.3fr 1.3fr', gap: '.85rem', padding: '.7rem 0', borderTop: '1px solid var(--border-subtle)', fontSize: '.84rem' }}>
-                      <strong>{row[0]}</strong>
-                      <span style={{ color: 'var(--text-secondary)' }}>{row[1]}</span>
-                      <span style={{ color: 'var(--text-secondary)' }}>{row[2]}</span>
-                      <span>{row[3]}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </>
-        );
-      })()}
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {/* Log Food Modal */}
       <Modal isOpen={addMealModal} onClose={() => setAddMealModal(false)} title="Log Meal Entry">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className={styles.formGroup}>
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-              Meal Time
-            </label>
+            <label className={styles.formLabel}>Meal Time</label>
             <select
               value={mealType}
               onChange={(e) => setMealType(e.target.value as any)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.formSelect}
             >
               <option value="BREAKFAST">Breakfast</option>
               <option value="LUNCH">Lunch</option>
@@ -433,114 +442,59 @@ export default function NutritionPage() {
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-              Food / Meal Name
-            </label>
+            <label className={styles.formLabel}>Food / Meal Name</label>
             <input
               type="text"
               placeholder="e.g. Grilled Salmon & Sweet Potato"
               value={foodName}
               onChange={(e) => setFoodName(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.formInput}
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className={styles.formGrid2}>
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                Calories (kcal)
-              </label>
+              <label className={styles.formLabel}>Calories (kcal)</label>
               <input
                 type="number"
                 value={calories}
                 onChange={(e) => setCalories(parseFloat(e.target.value) || 0)}
-                style={{
-                  width: '100%',
-                  marginTop: '4px',
-                  padding: '8px 12px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                }}
+                className={styles.formInput}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                Protein (g)
-              </label>
+              <label className={styles.formLabel}>Protein (g)</label>
               <input
                 type="number"
                 value={protein}
                 onChange={(e) => setProtein(parseFloat(e.target.value) || 0)}
-                style={{
-                  width: '100%',
-                  marginTop: '4px',
-                  padding: '8px 12px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                }}
+                className={styles.formInput}
               />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className={styles.formGrid2}>
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                Carbs (g)
-              </label>
+              <label className={styles.formLabel}>Carbs (g)</label>
               <input
                 type="number"
                 value={carbs}
                 onChange={(e) => setCarbs(parseFloat(e.target.value) || 0)}
-                style={{
-                  width: '100%',
-                  marginTop: '4px',
-                  padding: '8px 12px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                }}
+                className={styles.formInput}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                Fat (g)
-              </label>
+              <label className={styles.formLabel}>Fat (g)</label>
               <input
                 type="number"
                 value={fat}
                 onChange={(e) => setFat(parseFloat(e.target.value) || 0)}
-                style={{
-                  width: '100%',
-                  marginTop: '4px',
-                  padding: '8px 12px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                }}
+                className={styles.formInput}
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+          <div className={styles.formActions}>
             <Button variant="secondary" onClick={() => setAddMealModal(false)}>
               Cancel
             </Button>

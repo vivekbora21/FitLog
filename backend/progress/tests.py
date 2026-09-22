@@ -60,3 +60,63 @@ class BodyMeasurementTests(TestCase):
         del_res = self.client.delete(f"/api/progress/measurements/{m.id}/")
         self.assertEqual(del_res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(BodyMeasurement.objects.filter(id=m.id).exists())
+
+
+class DailyLogTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="runner@example.com",
+            username="runner",
+            password="securepassword123"
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_create_daily_log(self):
+        payload = {
+            "date": "2026-09-15",
+            "steps": 8500,
+            "sleep_hours": 8.0,
+            "sleep_quality": 4,
+            "energy_level": 4,
+            "recovery_notes": "Optimal recovery, feeling energetic."
+        }
+        res = self.client.post("/api/progress/daily/", payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["steps"], 8500)
+        self.assertEqual(res.data["sleep_hours"], 8.0)
+        self.assertEqual(res.data["energy_level"], 4)
+
+    def test_update_existing_daily_log_on_post(self):
+        payload1 = {
+            "date": "2026-09-16",
+            "steps": 7000,
+            "sleep_hours": 7.5,
+        }
+        res1 = self.client.post("/api/progress/daily/", payload1, format="json")
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+
+        # Update later in the day with additional energy and notes
+        payload2 = {
+            "date": "2026-09-16",
+            "steps": 9200,
+            "energy_level": 5,
+            "recovery_notes": "Hit evening step walk target."
+        }
+        res2 = self.client.post("/api/progress/daily/", payload2, format="json")
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertEqual(res2.data["steps"], 9200)
+        self.assertEqual(res2.data["sleep_hours"], 7.5)
+        self.assertEqual(res2.data["energy_level"], 5)
+        self.assertEqual(res2.data["recovery_notes"], "Hit evening step walk target.")
+
+    def test_filter_by_date(self):
+        self.client.post("/api/progress/daily/", {"date": "2026-09-17", "steps": 6000}, format="json")
+        self.client.post("/api/progress/daily/", {"date": "2026-09-18", "steps": 8000}, format="json")
+
+        res = self.client.get("/api/progress/daily/?date=2026-09-18")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.data.get("results", res.data)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["steps"], 8000)
+
