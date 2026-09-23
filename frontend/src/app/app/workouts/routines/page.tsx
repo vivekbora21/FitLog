@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ExerciseModal } from '@/components/ExerciseModal';
+import styles from './routines.module.css';
 
 export default function RoutinesPage() {
   const router = useRouter();
@@ -88,12 +89,12 @@ export default function RoutinesPage() {
   const personalRoutines = routines.filter((r) => !r.is_gym_template);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={styles.container}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className={styles.header}>
         <div>
-          <h1 style={{ fontSize: '2rem' }}>Workout Routines & Templates</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+          <h1 className={styles.title}>Workout Routines & Templates</h1>
+          <p className={styles.subtitle}>
             Structured workout splits designed for progressive overload and muscle development.
           </p>
         </div>
@@ -106,43 +107,32 @@ export default function RoutinesPage() {
 
       {/* Gym Templates Section */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+        <div className={styles.sectionHeader}>
           <Shield size={20} color="var(--color-primary)" />
-          <h2 style={{ fontSize: '1.35rem' }}>Apex Gym Templates</h2>
+          <h2 className={styles.sectionTitle}>Apex Gym Templates</h2>
           <Badge variant="emerald">Coach Verified</Badge>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+        <div className={styles.routineGrid}>
           {gymTemplates.map((routine) => (
-            <Card key={routine.id} hoverable style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <Card key={routine.id} hoverable className={styles.routineCard}>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <h3 style={{ fontSize: '1.2rem' }}>{routine.name}</h3>
+                <div className={styles.routineCardHeader}>
+                  <h3 className={styles.routineName}>{routine.name}</h3>
                   <Badge variant="amber">Template</Badge>
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                <p className={styles.routineDesc}>
                   {routine.description || 'Custom workout template.'}
                 </p>
 
                 {/* Exercises list */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1.25rem' }}>
+                <div className={styles.exerciseList}>
                   {routine.exercises.map((re, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: '0.8125rem',
-                        padding: '6px 10px',
-                        background: 'var(--bg-surface-elevated)',
-                        borderRadius: 'var(--radius-sm)',
-                      }}
-                    >
-                      <span style={{ fontWeight: 600 }}>
+                    <div key={idx} className={styles.exerciseChip}>
+                      <span className={styles.exerciseChipName}>
                         #{re.order} {re.exercise_name}
                       </span>
-                      <span style={{ color: 'var(--text-muted)' }}>
+                      <span className={styles.exerciseChipSets}>
                         {re.target_sets} sets × {re.target_reps}
                       </span>
                     </div>
@@ -150,8 +140,8 @@ export default function RoutinesPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <div className={styles.routineFooter}>
+                <span className={styles.authorLabel}>
                   By {routine.created_by_name || 'Coach'}
                 </span>
                 <Button
@@ -170,36 +160,36 @@ export default function RoutinesPage() {
 
       {/* Personal Member Routines Section */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+        <div className={styles.sectionHeader}>
           <UserCheck size={20} color="var(--color-cyan)" />
-          <h2 style={{ fontSize: '1.35rem' }}>Personal Routines</h2>
+          <h2 className={styles.sectionTitle}>Personal Routines</h2>
           <Badge variant="cyan">Member Owned</Badge>
         </div>
 
         {personalRoutines.length === 0 ? (
-          <Card style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              You haven't built any personal routines yet. Create one tailored to your personal split!
+          <Card className={styles.emptyCard}>
+            <p className={styles.emptyText}>
+              You haven&apos;t built any personal routines yet. Create one tailored to your personal split!
             </p>
             <Button size="sm" variant="outline" onClick={() => setCreateModalOpen(true)}>
               <Plus size={14} /> Create Personal Routine
             </Button>
           </Card>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+          <div className={styles.routineGrid}>
             {personalRoutines.map((routine) => (
-              <Card key={routine.id} hoverable style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <Card key={routine.id} hoverable className={styles.routineCard}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '1.2rem' }}>{routine.name}</h3>
+                  <div className={styles.routineCardHeader}>
+                    <h3 className={styles.routineName}>{routine.name}</h3>
                     <Badge variant="cyan">Personal</Badge>
                   </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+                  <p className={styles.routineDesc}>
                     {routine.description || 'Personal routine.'}
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+                <div className={`${styles.routineFooter} ${styles.routineFooterRight}`}>
                   <Button
                     size="sm"
                     variant="primary"
@@ -217,9 +207,9 @@ export default function RoutinesPage() {
 
       {/* Create Routine Modal */}
       <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create New Routine">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className={styles.modalForm}>
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Routine Title
             </label>
             <input
@@ -227,21 +217,12 @@ export default function RoutinesPage() {
               placeholder="e.g. Upper Body Hypertrophy"
               value={newRoutineName}
               onChange={(e) => setNewRoutineName(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.formInput}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <label className={styles.formLabel}>
               Description
             </label>
             <textarea
@@ -249,23 +230,13 @@ export default function RoutinesPage() {
               placeholder="Focus areas, tempo cues, recommended split day..."
               value={newRoutineDesc}
               onChange={(e) => setNewRoutineDesc(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                resize: 'none',
-              }}
+              className={styles.formTextarea}
             />
           </div>
 
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+            <div className={styles.exerciseSectionHeader}>
+              <label className={styles.formLabel}>
                 Routine Exercises ({selectedExercises.length})
               </label>
               <Button size="sm" variant="secondary" onClick={() => setExercisePickerOpen(true)}>
@@ -273,23 +244,13 @@ export default function RoutinesPage() {
               </Button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+            <div className={styles.selectedExercisesList}>
               {selectedExercises.map((e, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    background: 'var(--bg-surface-elevated)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                <div key={idx} className={styles.selectedExerciseRow}>
+                  <span className={styles.selectedExerciseName}>
                     #{idx + 1} {e.exercise_name}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className={styles.setsControls}>
                     <input
                       type="number"
                       value={e.target_sets}
@@ -298,12 +259,12 @@ export default function RoutinesPage() {
                         copy[idx].target_sets = parseInt(ev.target.value, 10) || 3;
                         setSelectedExercises(copy);
                       }}
-                      style={{ width: '45px', padding: '4px', background: '#FFFFFF', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', borderRadius: '4px', textAlign: 'center' }}
+                      className={styles.setsInput}
                     />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>sets</span>
+                    <span className={styles.setsLabel}>sets</span>
                     <button
                       onClick={() => setSelectedExercises((prev) => prev.filter((_, i) => i !== idx))}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--color-rose)', cursor: 'pointer' }}
+                      className={styles.deleteBtn}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -313,7 +274,7 @@ export default function RoutinesPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+          <div className={styles.modalActions}>
             <Button variant="secondary" onClick={() => setCreateModalOpen(false)}>
               Cancel
             </Button>

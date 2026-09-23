@@ -10,9 +10,17 @@ from .models import Routine, AssignedWorkout, WorkoutSession, JourneyProgram, Pr
 from .serializers import RoutineSerializer, AssignedWorkoutSerializer, WorkoutSessionSerializer, ProgramDaySerializer, CardioEntrySerializer
 from memberships.models import TrainerClientAssignment, GymMembership
 from progress.models import WeightEntry, BodyMeasurement, PersonalRecord
-from nutrition.models import NutritionDay, MacroTarget
+from nutrition.models import NutritionDay
+from nutrition.targets import get_or_create_macro_target
 from core.models import AuditLog
 from notifications.models import Notification
+from analytics.pacing import (
+    resolve_start_weight,
+    resolve_target_weekly_rate,
+    resolve_target_weight,
+    calculate_journey_pacing,
+    DEFAULT_WEEKLY_RATES,
+)
 
 class WorkoutSessionViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutSessionSerializer
@@ -56,7 +64,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
                 'current_day': program.current_day,
                 'duration_days': program.duration_days,
             },
-            'today': ProgramDaySerializer(day).data if day else None
+            'today': ProgramDaySerializer(day, context={'request': request}).data if day else None
         })
 
     @action(detail=False, methods=['get'], url_path='plan')
@@ -83,7 +91,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
                 'target_cardio_minutes_early': program.target_cardio_minutes_early,
                 'target_cardio_minutes_later': program.target_cardio_minutes_later,
             },
-            'days': ProgramDaySerializer(days, many=True).data,
+            'days': ProgramDaySerializer(days, many=True, context={'request': request}).data,
         })
 
     @action(detail=False, methods=['get'], url_path='journey-history')
@@ -162,7 +170,6 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             )
         )
 
-        from analytics.pacing import calculate_journey_pacing
         pacing = calculate_journey_pacing(request.user, program)
 
         personal_records = [
@@ -243,7 +250,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             NutritionDay.objects.filter(user=request.user, date__gte=start_date, date__lte=range_end)
             .prefetch_related('meals')
         )
-        macro_target, _ = MacroTarget.objects.get_or_create(user=request.user)
+        macro_target = get_or_create_macro_target(request.user)
         nutrition_summary = None
         if nutrition_days:
             avg_calories = round(sum(nd.total_calories() for nd in nutrition_days) / len(nutrition_days))
@@ -342,12 +349,10 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
 
         # 1. Start weight resolution & precedence
         raw_start_w = data.get('start_weight_kg')
-        start_weight_kg = None
+        start_weight_kg = resolve_start_weight(user, override_kg=raw_start_w, start_date=date.today())
         if raw_start_w is not None and str(raw_start_w).strip() != '':
             try:
-                val = float(raw_start_w)
-                if val > 0:
-                    start_weight_kg = round(val, 2)
+                if float(raw_start_w) > 0:
                     WeightEntry.objects.update_or_create(
                         user=user,
                         date=date.today(),
@@ -355,11 +360,6 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
                     )
             except (ValueError, TypeError):
                 pass
-
-        from analytics.pacing import resolve_start_weight, resolve_target_weekly_rate
-
-        if start_weight_kg is None:
-            start_weight_kg = resolve_start_weight(user)
 
         # Target weight & weekly rate
         raw_target_w = data.get('target_weight_kg')
@@ -377,9 +377,10 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             start_weight_kg=start_weight_kg,
             target_weight_kg=target_weight_kg,
             duration_days=duration_days,
+            explicit_rate_kg=data.get('target_weekly_rate_kg'),
         )
         if target_weight_kg is None:
-            target_weight_kg = round(start_weight_kg + (target_weekly_rate_kg * (duration_days / 7.0)), 1)
+            target_weight_kg = resolve_target_weight(start_weight_kg, target_weekly_rate_kg, duration_days)
 
         focus_exercise = None
         focus_exercise_id = data.get('focus_exercise_id')
@@ -453,7 +454,6 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
 
         ProgramDay.objects.bulk_create(program_days)
 
-        from analytics.pacing import calculate_journey_pacing
         pacing_data = calculate_journey_pacing(user, new_program)
 
         return Response({

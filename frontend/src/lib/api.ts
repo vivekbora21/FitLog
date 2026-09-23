@@ -1,4 +1,4 @@
-import type { JourneyDetail } from './types';
+import type { Food, JourneyDetail, MacroTarget, RecommendedTargets, RecentFood, NutritionDayResponse } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -119,6 +119,8 @@ class ApiClient {
       date_of_birth?: string | null;
       height_cm?: number | null;
       weight_kg?: number | null;
+      sex?: string;
+      activity_level?: string;
       fitness_goal?: string;
       unit_preference?: string;
       bio?: string;
@@ -242,14 +244,51 @@ class ApiClient {
 
   // Nutrition
   async getNutrition(dateStr: string = 'today') {
-    return this.request<{ day: any; targets: any }>(`/nutrition/${dateStr}/`);
+    return this.request<NutritionDayResponse>(`/nutrition/${dateStr}/`);
   }
 
-  async addMeal(mealData: { name: string; meal_type: string; calories: number; protein_g: number; carbs_g: number; fat_g: number; date?: string }) {
+  // Pass `food` + `servings` or `quantity` to have the server compute macros; otherwise send them explicitly.
+  async addMeal(mealData: { meal_type: string; name?: string; food?: string; servings?: number; quantity?: number; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number; date?: string }) {
     return this.request<any>('/nutrition/meals/', {
       method: 'POST',
       body: JSON.stringify(mealData),
     });
+  }
+
+  async deleteMeal(mealId: string) {
+    return this.request<any>(`/nutrition/meals/${mealId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRecentFoods() {
+    return this.request<RecentFood[]>('/nutrition/recent-foods/');
+  }
+
+  async repeatYesterdayMeal(mealType?: string, date?: string) {
+    return this.request<{ copied_count: number; meals: any[]; day: any }>('/nutrition/repeat-yesterday/', {
+      method: 'POST',
+      body: JSON.stringify({ meal_type: mealType, date }),
+    });
+  }
+
+  async searchFoods(search: string = '') {
+    return this.request<Food[]>(`/nutrition/foods/?search=${encodeURIComponent(search)}`);
+  }
+
+  async createFood(food: { name: string; serving_label: string; calories: number; protein_g: number; carbs_g: number; fat_g: number }) {
+    return this.request<Food>('/nutrition/foods/', {
+      method: 'POST',
+      body: JSON.stringify(food),
+    });
+  }
+
+  async getRecommendedTargets() {
+    return this.request<RecommendedTargets>('/nutrition/macro-targets/recommended/');
+  }
+
+  async applyRecommendedTargets() {
+    return this.request<MacroTarget>('/nutrition/macro-targets/recommended/', { method: 'POST' });
   }
 
   async updateWater(dateStr: string, waterMl: number) {

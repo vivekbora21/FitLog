@@ -45,6 +45,7 @@ class BodyMeasurementViewSet(viewsets.ModelViewSet):
 class PersonalRecordViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PersonalRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         client_id = self.request.query_params.get('client_id')

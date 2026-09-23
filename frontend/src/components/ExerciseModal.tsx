@@ -7,6 +7,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Exercise } from '@/lib/types';
 import { api } from '@/lib/api';
+import styles from './ExerciseModal.module.css';
 
 interface ExerciseModalProps {
   isOpen: boolean;
@@ -54,47 +55,28 @@ export const ExerciseModal: React.FC<ExerciseModalProps> = ({ isOpen, onClose, o
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Select Exercise">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className={styles.wrap}>
         {/* Search Bar */}
-        <div style={{ position: 'relative' }}>
-          <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+        <div className={styles.searchWrap}>
+          <Search size={18} className={styles.searchIcon} />
           <input
             type="text"
             placeholder="Search exercise by name or muscle..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 38px',
-              background: '#FFFFFF',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              fontSize: '0.9rem',
-              outline: 'none',
-            }}
+            className={styles.searchInput}
           />
         </div>
 
         {/* Muscle Category Filter Pills */}
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div className={styles.filterScroll}>
           {muscles.map((m) => {
             const active = selectedMuscle === m.slug;
             return (
               <button
                 key={m.slug}
                 onClick={() => setSelectedMuscle(m.slug)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  border: active ? '1px solid var(--color-primary)' : '1px solid var(--border-subtle)',
-                  background: active ? 'var(--color-primary)' : '#FFFFFF',
-                  color: active ? '#FFFFFF' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
+                className={`${styles.filterPill} ${active ? styles.filterPillActive : ''}`}
               >
                 {m.label}
               </button>
@@ -103,11 +85,11 @@ export const ExerciseModal: React.FC<ExerciseModalProps> = ({ isOpen, onClose, o
         </div>
 
         {/* Exercise List */}
-        <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className={styles.listWrap}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>Loading catalog...</div>
+            <div className={styles.emptyState}>Loading catalog...</div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No matching exercises found.</div>
+            <div className={styles.emptyState}>No matching exercises found.</div>
           ) : (
             filtered.map((ex) => (
               <div
@@ -116,32 +98,14 @@ export const ExerciseModal: React.FC<ExerciseModalProps> = ({ isOpen, onClose, o
                   onSelectExercise(ex);
                   onClose();
                 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 14px',
-                  background: 'var(--bg-surface-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  cursor: 'pointer',
-                  transition: 'all var(--transition-fast)',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-glow)';
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)';
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface-elevated)';
-                }}
+                className={styles.exerciseItem}
               >
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{ex.name}</div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                    <Badge variant="emerald">{ex.primary_muscle_name}</Badge>
-                    <Badge variant="cyan">{ex.equipment_name}</Badge>
-                    {ex.gym_name && <Badge variant="violet">{ex.gym_name}</Badge>}
+                  <div className={styles.exerciseName}>{ex.name}</div>
+                  <div className={styles.badgeRow}>
+                    <Badge variant="emerald" size="sm">{ex.primary_muscle_name}</Badge>
+                    <Badge variant="cyan" size="sm">{ex.equipment_name}</Badge>
+                    {ex.gym_name && <Badge variant="violet" size="sm">{ex.gym_name}</Badge>}
                   </div>
                 </div>
                 <Button size="sm" variant="secondary" iconOnly>

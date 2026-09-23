@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, Trash2, Check, Trophy, X, Dumbbell, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Exercise, Routine } from '@/lib/types';
+import { Exercise, ProgressionRecommendation, Routine } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -29,7 +29,7 @@ interface ActiveExercise {
   notes: string;
   targetReps?: string;
   targetRpe?: number | null;
-  suggestedWeight?: number | null;
+  progression?: ProgressionRecommendation | null;
   sets: ActiveSet[];
 }
 
@@ -43,7 +43,12 @@ type RoutineExercisePayload = {
   target_reps?: string;
   target_rpe?: number | null;
   suggested_weight_kg?: number | null;
+  progression?: ProgressionRecommendation | null;
 };
+
+// The load to prescribe: server progression first, routine default as fallback.
+const plannedLoad = (re: RoutineExercisePayload) =>
+  re.progression?.recommended_weight_kg ?? re.suggested_weight_kg ?? null;
 
 type RoutinePayload = {
   id?: string;
@@ -121,13 +126,15 @@ function ActiveWorkoutLoggerInner() {
     ]);
   };
 
-  // Add a specific exercise prescribed by the routine
-  const addRoutineExercise = (re: RoutineExercisePayload) => {
+  // Build an active exercise from the routine prescription, pre-filling each set with
+  // the server's progression recommendation so it matches what the Plan page shows.
+  const toActiveExercise = (re: RoutineExercisePayload): ActiveExercise => {
     const setsCount = re.target_sets || 3;
     const targetRepMatch = re.target_reps?.match(/\d+/);
     const defaultReps = targetRepMatch ? parseInt(targetRepMatch[0], 10) : 8;
+    const weight = plannedLoad(re) ?? 0;
 
-    const newExercise: ActiveExercise = {
+    return {
       exerciseId: re.exercise,
       name: re.exercise_name,
       primaryMuscle: re.primary_muscle,
@@ -135,52 +142,27 @@ function ActiveWorkoutLoggerInner() {
       notes: re.notes || '',
       targetReps: re.target_reps,
       targetRpe: re.target_rpe,
-      suggestedWeight: re.suggested_weight_kg,
+      progression: re.progression,
       sets: Array.from({ length: setsCount }).map((_, sIdx) => ({
         set_number: sIdx + 1,
         set_type: 'NORMAL',
-        weight_kg: re.suggested_weight_kg || 0,
-        reps: defaultReps,
+        weight_kg: weight,
+        reps: re.progression?.target_reps[sIdx] ?? defaultReps,
         rpe: re.target_rpe || null,
         completed: false,
       })),
     };
-
-    setExercises((prev) => [...prev, newExercise]);
   };
 
-  // Add all routine exercises at once
+  const addRoutineExercise = (re: RoutineExercisePayload) => {
+    setExercises((prev) => [...prev, toActiveExercise(re)]);
+  };
+
   const addAllRoutineExercises = () => {
     const unadded = routineExercises.filter(
       (re) => !exercises.some((ex) => ex.exerciseId === re.exercise)
     );
-
-    const newItems: ActiveExercise[] = unadded.map((re) => {
-      const setsCount = re.target_sets || 3;
-      const targetRepMatch = re.target_reps?.match(/\d+/);
-      const defaultReps = targetRepMatch ? parseInt(targetRepMatch[0], 10) : 8;
-
-      return {
-        exerciseId: re.exercise,
-        name: re.exercise_name,
-        primaryMuscle: re.primary_muscle,
-        restSeconds: re.rest_seconds || 90,
-        notes: re.notes || '',
-        targetReps: re.target_reps,
-        targetRpe: re.target_rpe,
-        suggestedWeight: re.suggested_weight_kg,
-        sets: Array.from({ length: setsCount }).map((_, sIdx) => ({
-          set_number: sIdx + 1,
-          set_type: 'NORMAL',
-          weight_kg: re.suggested_weight_kg || 0,
-          reps: defaultReps,
-          rpe: re.target_rpe || null,
-          completed: false,
-        })),
-      };
-    });
-
-    setExercises((prev) => [...prev, ...newItems]);
+    setExercises((prev) => [...prev, ...unadded.map(toActiveExercise)]);
   };
 
   const removeExercise = (index: number) => {
@@ -245,18 +227,6 @@ function ActiveWorkoutLoggerInner() {
       });
     });
     return volume;
-  };
-
-  const progressionRecommendation = (ex: ActiveExercise) => {
-    const match = ex.targetReps?.match(/(\d+)\s*[-–]\s*(\d+)/);
-    const topReps = match ? Number(match[2]) : 0;
-    const completed = ex.sets.filter((set) => set.completed);
-    if (!completed.length || !topReps) return `Log all working sets. Target ${ex.targetReps || 'the prescribed rep range'} at RPE ${ex.targetRpe || '8'}.`;
-    const sameLoad = completed.every((set) => set.weight_kg === completed[0].weight_kg);
-    const atTop = completed.length === ex.sets.length && completed.every((set) => set.reps >= topReps && (!ex.targetRpe || !set.rpe || set.rpe <= ex.targetRpe + .5));
-    if (atTop && sameLoad) return `Increase ${completed[0].weight_kg} kg by 1.25–2.5 kg next session: every set reached ${topReps} at the intended RPE.`;
-    const next = completed.map((set) => Math.min(topReps, set.reps + 1)).join(' / ');
-    return `Keep ${completed[0].weight_kg} kg. Next session aim for ${next}; increase load only after every prescribed set reaches ${topReps}.`;
   };
 
   const handleFinishWorkout = async () => {
@@ -394,7 +364,7 @@ function ActiveWorkoutLoggerInner() {
                       </div>
                       <div className={styles.routineItemMeta}>
                         Target: {re.target_sets || 3} sets × {re.target_reps || '8 reps'}
-                        {re.suggested_weight_kg ? ` · ${re.suggested_weight_kg} kg` : ''}
+                        {plannedLoad(re) ? ` · ${plannedLoad(re)} kg` : ''}
                         {re.target_rpe ? ` @ RPE ${re.target_rpe}` : ''}
                       </div>
                     </div>
@@ -437,10 +407,15 @@ function ActiveWorkoutLoggerInner() {
                 </Button>
               </div>
 
-              <div className={styles.progressionBox}>
-                <strong className={styles.progressionLabel}>PROGRESSION RECOMMENDATION · </strong>
-                {progressionRecommendation(ex)}
-              </div>
+              {ex.progression && (
+                <div className={styles.progressionBox}>
+                  <strong className={styles.progressionLabel}>PROGRESSION RECOMMENDATION · </strong>
+                  {ex.progression.last_session && (
+                    <>Last time {ex.progression.last_session.weight_kg} kg × {ex.progression.last_session.reps.join(' / ')}. </>
+                  )}
+                  {ex.progression.note}
+                </div>
+              )}
 
               {/* Set Table */}
               <div className={styles.tableWrap}>

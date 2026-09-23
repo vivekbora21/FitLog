@@ -345,3 +345,30 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.errorNote {
+  background: rgba(225, 29, 72, 0.08);
+  border: 1px solid #fda4af;
+  color: #be123c;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.formGroupSpaced {
+  margin-top: 0.5rem;
+}
+
+.inputHelpText {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.warningText {
+  color: #EF4444;
+  margin-left: 4px;
+}

@@ -26,6 +26,20 @@ class UserProfile(UUIDTimeStampedModel):
         ('GENERAL_FITNESS', 'General Health & Fitness'),
     ]
 
+    SEX_CHOICES = [
+        ('MALE', 'Male'),
+        ('FEMALE', 'Female'),
+    ]
+
+    # Multipliers applied to BMR to estimate TDEE (see nutrition/targets.py).
+    ACTIVITY_CHOICES = [
+        ('SEDENTARY', 'Sedentary (desk job, little exercise)'),
+        ('LIGHT', 'Light (1–3 sessions / week)'),
+        ('MODERATE', 'Moderate (3–5 sessions / week)'),
+        ('HIGH', 'High (6–7 sessions / week)'),
+        ('ATHLETE', 'Athlete (twice-daily or physical job)'),
+    ]
+
     UNIT_CHOICES = [
         ('METRIC', 'Metric (kg / cm)'),
         ('IMPERIAL', 'Imperial (lbs / inches)'),
@@ -35,6 +49,8 @@ class UserProfile(UUIDTimeStampedModel):
     date_of_birth = models.DateField(null=True, blank=True)
     height_cm = models.FloatField(null=True, blank=True)
     weight_kg = models.FloatField(null=True, blank=True)
+    sex = models.CharField(max_length=10, choices=SEX_CHOICES, blank=True, default='')
+    activity_level = models.CharField(max_length=15, choices=ACTIVITY_CHOICES, default='MODERATE')
     fitness_goal = models.CharField(max_length=30, choices=GOAL_CHOICES, default='HYPERTROPHY')
     unit_preference = models.CharField(max_length=15, choices=UNIT_CHOICES, default='METRIC')
     bio = models.TextField(blank=True, default='')

@@ -3,6 +3,8 @@ export interface UserProfile {
   date_of_birth?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
+  sex?: 'MALE' | 'FEMALE' | '';
+  activity_level?: 'SEDENTARY' | 'LIGHT' | 'MODERATE' | 'HIGH' | 'ATHLETE';
   fitness_goal: string;
   unit_preference: string;
   bio: string;
@@ -74,6 +76,19 @@ export interface RoutineExercise {
   target_reps: string;
   rest_seconds: number;
   notes: string;
+  target_rpe?: number | null;
+  suggested_weight_kg?: number | null;
+  focus?: string;
+  progression?: ProgressionRecommendation | null;
+}
+
+/** Server-computed next-session prescription (backend/workouts/progression.py). */
+export interface ProgressionRecommendation {
+  action: 'START' | 'HOLD' | 'INCREASE';
+  recommended_weight_kg: number | null;
+  target_reps: number[];
+  note: string;
+  last_session: { date: string; weight_kg: number; reps: number[] } | null;
 }
 
 export interface Routine {
@@ -153,12 +168,61 @@ export interface MealEntry {
   id: string;
   meal_type: 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK';
   name: string;
+  food?: string | null;
+  servings?: number;
+  quantity?: number;
   calories: number;
   protein_g: number;
   carbs_g: number;
   fat_g: number;
   time_logged: string;
 }
+
+export interface RecentFood {
+  id: string;
+  food_id?: string | null;
+  name: string;
+  serving_label: string;
+  serving_grams?: number | null;
+  quantity: number;
+  servings: number;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  meal_type: 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK';
+  is_custom: boolean;
+  last_logged_date: string;
+}
+
+export interface Food {
+  id: string;
+  name: string;
+  serving_label: string;
+  serving_grams?: number | null;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  is_custom: boolean;
+}
+
+export type RecommendedTargets =
+  | { available: false; missing: string[] }
+  | {
+      available: true;
+      inputs: { weight_kg: number; weight_source: string; height_cm: number; age_years: number; sex: string; activity_level: string };
+      bmr: number;
+      activity_factor: number;
+      tdee: number;
+      goal_source: string;
+      calorie_adjustment: number;
+      protein_g_per_kg: number;
+      daily_calories: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+    };
 
 export interface NutritionDay {
   id: string;
@@ -171,6 +235,12 @@ export interface NutritionDay {
   total_protein: number;
   total_carbs: number;
   total_fat: number;
+}
+
+export interface NutritionDayResponse {
+  day: NutritionDay;
+  targets: MacroTarget;
+  yesterday_meals?: MealEntry[];
 }
 
 export interface MacroTarget {
@@ -355,10 +425,39 @@ export interface DashboardStats {
     sleep_quality?: number | null;
     energy_level?: number | null;
     recovery_notes?: string;
+    weight_kg?: number | null;
   };
   weekly_review?: any[];
+  weekly_health?: WeeklyHealth;
   journey_pacing?: JourneyPacingData;
   adherence?: DashboardAdherence;
+}
+
+export type WeeklyHealthStatus = 'good' | 'warn' | 'bad' | 'pending';
+
+export interface WeeklyHealthMetric {
+  key: 'workouts' | 'protein' | 'calories' | 'steps' | 'cardio' | 'sleep';
+  label: string;
+  actual: number | null;
+  target: number | null;
+  unit: string;
+  status: WeeklyHealthStatus;
+  status_label: string;
+  focus: string;
+}
+
+/** Server-computed "this week" summary shared by the Dashboard and Review pages. */
+export interface WeeklyHealth {
+  window: {
+    source: 'program' | 'calendar';
+    label: string;
+    start: string;
+    end: string;
+    days_elapsed: number;
+    days_in_week: number;
+  };
+  metrics: WeeklyHealthMetric[];
+  focus: string;
 }
 
 export interface AdherenceMetricItem {

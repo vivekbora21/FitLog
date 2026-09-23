@@ -5,6 +5,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   iconOnly?: boolean;
+  fullWidth?: boolean;
   children: React.ReactNode;
 }
 
@@ -12,6 +13,7 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
   iconOnly = false,
+  fullWidth = false,
   className = '',
   children,
   ...props
@@ -21,6 +23,7 @@ export const Button: React.FC<ButtonProps> = ({
     styles[variant],
     size !== 'md' ? styles[size] : '',
     iconOnly ? styles.iconOnly : '',
+    fullWidth ? styles.fullWidth : '',
     className,
   ].filter(Boolean).join(' ');
 

@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   HelpCircle,
   Percent,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { BodyMeasurement } from '@/lib/types';
@@ -61,6 +63,7 @@ export default function BodyMeasurementsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [historyWeek, setHistoryWeek] = useState(1);
 
   // Comparison State
   const [compareDateA, setCompareDateA] = useState<string>('');
@@ -291,6 +294,47 @@ export default function BodyMeasurementsPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // History log pagination: one page per 7-day window, counted back from the latest check-in
+  const historyWeeks = useMemo(() => {
+    const DAY_MS = 1000 * 60 * 60 * 24;
+    const sortedDesc = [...measurements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (sortedDesc.length === 0) return [];
+    const latest = new Date(sortedDesc[0].date).getTime();
+    const buckets = new Map<number, BodyMeasurement[]>();
+    for (const m of sortedDesc) {
+      const idx = Math.floor(Math.round((latest - new Date(m.date).getTime()) / DAY_MS) / 7);
+      if (!buckets.has(idx)) buckets.set(idx, []);
+      buckets.get(idx)!.push(m);
+    }
+    const fmt = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    return [...buckets.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([idx, rows]) => {
+        const end = latest - idx * 7 * DAY_MS;
+        return { rows, label: `${fmt(end - 6 * DAY_MS)} – ${fmt(end)}` };
+      });
+  }, [measurements]);
+
+  const historyTotalPages = Math.max(1, historyWeeks.length);
+  const historySafePage = Math.min(historyWeek, historyTotalPages);
+  const historyRows = historyWeeks[historySafePage - 1]?.rows ?? [];
+
+  const getHistoryPageNumbers = (): (number | '...')[] => {
+    const pages: (number | '...')[] = [];
+    if (historyTotalPages <= 7) {
+      for (let i = 1; i <= historyTotalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (historySafePage > 3) pages.push('...');
+      const start = Math.max(2, historySafePage - 1);
+      const end = Math.min(historyTotalPages - 1, historySafePage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (historySafePage < historyTotalPages - 2) pages.push('...');
+      pages.push(historyTotalPages);
+    }
+    return pages;
   };
 
   const handleDelete = async (id: string) => {
@@ -777,7 +821,7 @@ export default function BodyMeasurementsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {measurements.map((m) => (
+                  {historyRows.map((m) => (
                     <tr key={m.id} className={styles.tableRow}>
                       <td className={styles.tableTdDate}>
                         {m.date}
@@ -817,6 +861,54 @@ export default function BodyMeasurementsPage() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {historyTotalPages > 1 && (
+            <nav className={styles.pagination} aria-label="Check-in history pagination">
+              <span className={styles.pageSummary}>
+                {historySafePage === 1 ? 'Latest week' : `Week ${historySafePage}`} · {historyWeeks[historySafePage - 1]?.label}
+              </span>
+
+              <div className={styles.pageControls}>
+                <button
+                  className={styles.pageBtn}
+                  onClick={() => setHistoryWeek(p => Math.max(1, p - 1))}
+                  disabled={historySafePage === 1}
+                  aria-label="Newer week"
+                >
+                  <ChevronLeft size={16} />
+                  <span className={styles.pageBtnLabel}>Newer</span>
+                </button>
+
+                <div className={styles.pageNumbers}>
+                  {getHistoryPageNumbers().map((page, i) =>
+                    page === '...' ? (
+                      <span key={`ellipsis-${i}`} className={styles.pageEllipsis}>…</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setHistoryWeek(page)}
+                        className={`${styles.pageNumber} ${historySafePage === page ? styles.pageNumberActive : ''}`}
+                        aria-current={historySafePage === page ? 'page' : undefined}
+                        title={historyWeeks[page - 1]?.label}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+                </div>
+
+                <button
+                  className={styles.pageBtn}
+                  onClick={() => setHistoryWeek(p => Math.min(historyTotalPages, p + 1))}
+                  disabled={historySafePage === historyTotalPages}
+                  aria-label="Older week"
+                >
+                  <span className={styles.pageBtnLabel}>Older</span>
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </nav>
           )}
         </Card>
       </div>

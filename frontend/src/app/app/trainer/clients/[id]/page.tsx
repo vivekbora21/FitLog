@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { MetricChart } from '@/components/MetricChart';
 
+import styles from './clientDetail.module.css';
+
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -50,38 +52,27 @@ export default function ClientDetailPage() {
     }));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={styles.container}>
       <button
         onClick={() => router.back()}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--color-primary-light)',
-          cursor: 'pointer',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-          width: 'fit-content',
-        }}
+        className={styles.backButton}
       >
         <ArrowLeft size={16} />
         <span>Back to Client Roster</span>
       </button>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserCheck size={28} color="var(--color-primary)" />
+      <div className={styles.header}>
+        <div className={styles.headerInfo}>
+          <div className={styles.avatar}>
+            <UserCheck size={28} className={styles.avatarIcon} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '1.75rem' }}>Client Fitness Profile</h1>
+            <div className={styles.titleRow}>
+              <h1 className={styles.title}>Client Fitness Profile</h1>
               <Badge variant="emerald">Shared Workouts Active</Badge>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '2px' }}>
+            <p className={styles.subtitle}>
               Inspecting verified training volume, progressive overload, and weight trend.
             </p>
           </div>
@@ -102,15 +93,15 @@ export default function ClientDetailPage() {
 
       {/* Personal Records */}
       <div>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Client Personal Records</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <h2 className={styles.sectionTitle}>Client Personal Records</h2>
+        <div className={styles.prGrid}>
           {prs.map((pr) => (
             <Card key={pr.id}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{pr.exercise_name}</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
+              <div className={styles.prExercise}>{pr.exercise_name}</div>
+              <div className={styles.prWeight}>
                 {pr.max_weight_kg}kg × {pr.reps}
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-cyan)', marginTop: '2px' }}>
+              <div className={styles.prEst1rm}>
                 Est 1RM: {pr.estimated_one_rep_max} kg
               </div>
             </Card>
@@ -120,29 +111,29 @@ export default function ClientDetailPage() {
 
       {/* Completed Workout Logs */}
       <div>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Completed Workouts Log</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <h2 className={styles.sectionTitle}>Completed Workouts Log</h2>
+        <div className={styles.workoutList}>
           {workouts.map((w) => (
             <Card key={w.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div className={styles.workoutCardHeader}>
                 <div>
-                  <h3 style={{ fontSize: '1.15rem' }}>{w.title}</h3>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <h3 className={styles.workoutTitle}>{w.title}</h3>
+                  <div className={styles.workoutMeta}>
                     {new Date(w.started_at).toLocaleDateString()} • {Math.round(w.duration_seconds / 60)} mins
                     {w.overall_rpe && ` • RPE ${w.overall_rpe}/10`}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-light)' }}>
+                <div className={styles.volumeWrap}>
+                  <div className={styles.volumeValue}>
                     {w.total_volume_kg.toLocaleString()} kg
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Volume</div>
+                  <div className={styles.volumeLabel}>Volume</div>
                 </div>
               </div>
 
               {w.notes && (
-                <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', background: 'var(--bg-surface-elevated)', padding: '6px 10px', borderRadius: 'var(--radius-sm)' }}>
-                  Athlete note: "{w.notes}"
+                <p className={styles.athleteNote}>
+                  Athlete note: &ldquo;{w.notes}&rdquo;
                 </p>
               )}
             </Card>

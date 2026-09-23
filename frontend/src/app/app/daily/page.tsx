@@ -1,8 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Activity,
+  Footprints,
+  Flame,
+  Moon,
+  Droplets,
+  Scale,
+  Zap,
+  Dumbbell,
+  Timer,
+  CheckCircle2,
+  ChevronRight,
+  ChevronDown,
+  Calendar,
+  Sparkles,
+  Save,
+} from 'lucide-react';
 import { api } from '@/lib/api';
+import type { WeeklyHealth } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import styles from './daily.module.css';
@@ -26,6 +44,11 @@ export default function DailyLogPage() {
   const [savedNotice, setSavedNotice] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const formattedTodayDate = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date());
 
   const loadData = async () => {
     try {
@@ -81,7 +104,7 @@ export default function DailyLogPage() {
       await loadData();
       setCardioMinutes('');
       setSavedNotice(true);
-      setTimeout(() => setSavedNotice(false), 4000);
+      setTimeout(() => setSavedNotice(false), 4500);
     } catch (err) {
       console.error(err);
     } finally {
@@ -89,37 +112,93 @@ export default function DailyLogPage() {
     }
   }
 
-  const stats_cards: [string, string, string][] = [
-    [
-      'Morning weight',
-      stats?.journey?.current_weight ? `${stats.journey.current_weight} kg` : 'Not logged',
-      '/app/progress',
-    ],
-    [
-      'Steps (Today)',
-      steps ? `${Number(steps).toLocaleString()} / 10,000` : 'Not logged',
-      '/app/daily',
-    ],
-    [
-      'Sleep (Nightly)',
-      sleepHours ? `${sleepHours} / 8.0 hrs` : 'Not logged',
-      '/app/daily',
-    ],
-    [
-      'Calories',
-      `${nutrition?.day?.total_calories || 0} / ${nutrition?.targets?.daily_calories || 0}`,
-      '/app/nutrition',
-    ],
-    [
-      'Protein',
-      `${nutrition?.day?.total_protein || 0} / ${nutrition?.targets?.protein_g || 0} g`,
-      '/app/nutrition',
-    ],
-    [
-      'Workouts',
-      stats?.workouts_this_week != null ? `${stats.workouts_this_week} this week` : '0',
-      '/app/workouts/active',
-    ],
+  // Quick increment handlers
+  const handleAddWater = (delta: number) => {
+    const current = Number(water) || 0;
+    setWater(String(Math.max(0, current + delta)));
+  };
+
+  const handleAddSteps = (delta: number) => {
+    const current = Number(steps) || 0;
+    setSteps(String(Math.max(0, current + delta)));
+  };
+
+  const handleAppendNoteTag = (tag: string) => {
+    if (!recoveryNotes) {
+      setRecoveryNotes(tag);
+    } else if (!recoveryNotes.includes(tag)) {
+      setRecoveryNotes(`${recoveryNotes.trim()}, ${tag}`);
+    }
+  };
+
+  const weeklyWorkouts = (stats?.weekly_health as WeeklyHealth | undefined)?.metrics.find((m) => m.key === 'workouts');
+  const targetCalories = nutrition?.targets?.daily_calories || 2160;
+  const actualCalories = nutrition?.day?.total_calories || 0;
+  const caloriePercent = Math.min(100, Math.round((actualCalories / targetCalories) * 100));
+
+  const targetProtein = nutrition?.targets?.protein_g || 165;
+  const actualProtein = nutrition?.day?.total_protein || 0;
+  const proteinPercent = Math.min(100, Math.round((actualProtein / targetProtein) * 100));
+
+  const stepCount = Number(steps) || 0;
+  const stepPercent = Math.min(100, Math.round((stepCount / 10000) * 100));
+
+  const sleepVal = Number(sleepHours) || 0;
+  const sleepPercent = Math.min(100, Math.round((sleepVal / 8.0) * 100));
+
+  const workoutsActual = weeklyWorkouts?.actual ?? 0;
+  const workoutsTarget = weeklyWorkouts?.target ?? 7;
+  const workoutPercent = Math.min(100, Math.round((workoutsActual / (workoutsTarget || 1)) * 100));
+
+  const statCardsData = [
+    {
+      label: 'Morning Weight',
+      value: stats?.journey?.current_weight ? `${stats.journey.current_weight} kg` : 'Not logged',
+      href: '/app/workouts/plan/history',
+      icon: Scale,
+      iconClass: styles.iconCyan,
+      percent: null,
+    },
+    {
+      label: 'Steps (Today)',
+      value: steps ? `${Number(steps).toLocaleString()} / 10k` : 'Not logged',
+      href: '/app/daily',
+      icon: Footprints,
+      iconClass: styles.iconEmerald,
+      percent: steps ? stepPercent : 0,
+    },
+    {
+      label: 'Sleep (Nightly)',
+      value: sleepHours ? `${sleepHours} / 8.0 hrs` : 'Not logged',
+      href: '/app/daily',
+      icon: Moon,
+      iconClass: styles.iconViolet,
+      percent: sleepHours ? sleepPercent : 0,
+    },
+    {
+      label: 'Calories',
+      value: `${actualCalories} / ${targetCalories}`,
+      href: '/app/nutrition',
+      icon: Flame,
+      iconClass: styles.iconAmber,
+      percent: caloriePercent,
+    },
+    {
+      label: 'Protein',
+      value: `${actualProtein} / ${targetProtein} g`,
+      href: '/app/nutrition',
+      icon: Zap,
+      iconClass: styles.iconRose,
+      percent: proteinPercent,
+    },
+    {
+      label: 'Workouts',
+      value: `${workoutsActual} / ${workoutsTarget} this week`,
+      href: '/app/workouts/active',
+      icon: Dumbbell,
+      iconClass: styles.iconEmerald,
+      percent: workoutPercent,
+    },
   ];
 
   const ratingOptions = [
@@ -130,104 +209,290 @@ export default function DailyLogPage() {
     { value: 5, label: '5 High' },
   ];
 
+  const getEnergyDescriptor = (val: number | null) => {
+    switch (val) {
+      case 1:
+        return 'Low / Drained';
+      case 2:
+        return 'Sub-par / Fatigued';
+      case 3:
+        return 'Moderate / Baseline';
+      case 4:
+        return 'High / Ready';
+      case 5:
+        return 'Peak / Game Ready';
+      default:
+        return 'Select 1–5';
+    }
+  };
+
+  const getSleepDescriptor = (val: number | null) => {
+    switch (val) {
+      case 1:
+        return 'Restless / Broken';
+      case 2:
+        return 'Fragmented';
+      case 3:
+        return 'Fair / Normal';
+      case 4:
+        return 'Deep & Sound';
+      case 5:
+        return 'Optimal / Restorative';
+      default:
+        return 'Select 1–5';
+    }
+  };
+
+  const waterInLitres = (Number(water) / 1000).toFixed(1);
+
   return (
     <div className={styles.page}>
-      <header>
-        <div className={styles.eyebrow}>DAILY LOG · 1–2 MINUTES</div>
+      <header className={styles.header}>
+        <div className={styles.eyebrowRow}>
+          <div className={styles.eyebrow}>
+            <span className={styles.eyebrowDot} />
+            DAILY LOG · 1–2 MINUTE CHECK-IN
+          </div>
+        </div>
         <h1 className={styles.title}>Record the essentials</h1>
         <p className={styles.subtitle}>
-          Steps and sleep feed recovery-aware pacing and the weekly review. Weight lives in Progress; meals in Nutrition.
+          Steps and sleep feed recovery-aware pacing and the automated weekly review. Body weight lives in Progress; meals and macros are tracked in Nutrition.
         </p>
       </header>
 
+      {/* Top Metric Corridor */}
       <section className={styles.statGrid}>
-        {stats_cards.map(([label, value, href]) => (
-          <Card key={label} className={styles.statCard} onClick={() => router.push(href)}>
-            <small className={styles.statLabel}>{label}</small>
-            <strong className={styles.statValue}>{value}</strong>
-          </Card>
-        ))}
+        {statCardsData.map((item) => {
+          const IconComp = item.icon;
+          return (
+            <Card key={item.label} className={styles.statCard} onClick={() => router.push(item.href)}>
+              <div className={styles.statTopRow}>
+                <div className={`${styles.statIconTile} ${item.iconClass}`}>
+                  <IconComp size={18} strokeWidth={2.2} />
+                </div>
+                <ChevronRight size={14} className={styles.statChevron} />
+              </div>
+              <div>
+                <small className={styles.statLabel}>{item.label}</small>
+                <strong className={styles.statValue}>{item.value}</strong>
+              </div>
+              {item.percent !== null && (
+                <div className={styles.progressBarContainer} title={`${item.percent}% of target`}>
+                  <div className={styles.progressBarFill} style={{ width: `${item.percent}%` }} />
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </section>
 
+      {/* Main Check-In Form */}
       <Card className={styles.formCard}>
         <div className={styles.formHeader}>
-          <div>
+          <div className={styles.formTitleWrap}>
             <h2 className={styles.formTitle}>Daily Check-In &amp; Lifestyle Tracking</h2>
             <p className={styles.formHint}>
               Core inputs to the automated weekly review, fatigue debt detection, and adaptive decision protocol.
             </p>
           </div>
-          <span className={styles.dateChip}>Today · {todayStr}</span>
+          <div className={styles.dateChip}>
+            <Calendar size={14} color="var(--color-primary)" />
+            <span>Today · {formattedTodayDate}</span>
+            <span className={styles.dateChipDot} />
+          </div>
         </div>
 
         {/* 1. Steps & Activity */}
         <div className={styles.sectionBlock}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>
-              1. NEAT Steps &amp; Cardio Activity
+            <div className={styles.sectionTitle}>
+              <div className={`${styles.sectionIconTile} ${styles.iconEmerald}`}>
+                <Flame size={17} strokeWidth={2.3} />
+              </div>
+              <span>1. NEAT Steps &amp; Cardio Activity</span>
+            </div>
+            <span className={styles.targetBadge}>
+              <Sparkles size={12} />
+              Pillar 9 Target: 8,000–10,000 Steps
             </span>
-            <span className={styles.targetBadge}>Pillar 9 Target: 8,000–10,000 Steps</span>
           </div>
+
           <div className={styles.inputGrid}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Daily Steps</span>
-              <input
-                className={styles.input}
-                value={steps}
-                onChange={(e) => setSteps(e.target.value)}
-                type="number"
-                placeholder="e.g. 8500"
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Cardio Duration (minutes)</span>
-              <input
-                className={styles.input}
-                value={cardioMinutes}
-                onChange={(e) => setCardioMinutes(e.target.value)}
-                type="number"
-                placeholder="Optional (e.g. 25)"
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Cardio Modality</span>
-              <select
-                className={styles.select}
-                value={cardioModality}
-                onChange={(e) => setCardioModality(e.target.value)}
-              >
-                <option value="TREADMILL">Incline Treadmill Walk</option>
-                <option value="CYCLING">Stationary Bike</option>
-                <option value="CROSS_TRAINER">Cross Trainer / Elliptical</option>
-                <option value="ROWING">Rowing Ergometer</option>
-                <option value="OTHER">Outdoor Brisk Walk / Other</option>
-              </select>
-            </label>
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <label className={styles.fieldLabel} htmlFor="daily-steps-input">
+                  Daily Steps
+                </label>
+                {steps && Number(steps) >= 10000 && (
+                  <span className={styles.fieldDescriptor}>✓ Target Met</span>
+                )}
+              </div>
+              <div className={styles.inputWrapper}>
+                <input
+                  id="daily-steps-input"
+                  className={styles.input}
+                  value={steps}
+                  onChange={(e) => setSteps(e.target.value)}
+                  type="number"
+                  placeholder="e.g. 8500"
+                />
+                <span className={styles.unitSuffix}>steps</span>
+              </div>
+              <div className={styles.chipsRow}>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => handleAddSteps(1000)}
+                >
+                  +1k
+                </button>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => handleAddSteps(2500)}
+                >
+                  +2.5k
+                </button>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => handleAddSteps(5000)}
+                >
+                  +5k
+                </button>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => setSteps('10000')}
+                >
+                  10k Goal
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <label className={styles.fieldLabel} htmlFor="cardio-duration-input">
+                  Cardio Duration
+                </label>
+              </div>
+              <div className={styles.inputWrapper}>
+                <input
+                  id="cardio-duration-input"
+                  className={styles.input}
+                  value={cardioMinutes}
+                  onChange={(e) => setCardioMinutes(e.target.value)}
+                  type="number"
+                  placeholder="Optional (e.g. 25)"
+                />
+                <span className={styles.unitSuffix}>min</span>
+              </div>
+              <div className={styles.chipsRow}>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => setCardioMinutes('15')}
+                >
+                  15m
+                </button>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => setCardioMinutes('30')}
+                >
+                  30m
+                </button>
+                <button
+                  type="button"
+                  className={styles.quickChip}
+                  onClick={() => setCardioMinutes('45')}
+                >
+                  45m
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <label className={styles.fieldLabel} htmlFor="cardio-modality-select">
+                  Cardio Modality
+                </label>
+              </div>
+              <div className={styles.selectWrapper}>
+                <select
+                  id="cardio-modality-select"
+                  className={styles.select}
+                  value={cardioModality}
+                  onChange={(e) => setCardioModality(e.target.value)}
+                >
+                  <option value="TREADMILL">Incline Treadmill Walk</option>
+                  <option value="CYCLING">Stationary Bike</option>
+                  <option value="CROSS_TRAINER">Cross Trainer / Elliptical</option>
+                  <option value="ROWING">Rowing Ergometer</option>
+                  <option value="OTHER">Outdoor Brisk Walk / Other</option>
+                </select>
+                <ChevronDown size={16} className={styles.selectChevron} />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* 2. Sleep & Systemic Recovery */}
         <div className={styles.sectionBlock}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>
-              2. Sleep &amp; Systemic Recovery
+            <div className={styles.sectionTitle}>
+              <div className={`${styles.sectionIconTile} ${styles.iconViolet}`}>
+                <Moon size={17} strokeWidth={2.3} />
+              </div>
+              <span>2. Sleep &amp; Systemic Recovery</span>
+            </div>
+            <span className={`${styles.targetBadge} ${styles.targetBadgeViolet}`}>
+              <Sparkles size={12} />
+              Pillar 7 Target: 7.5–8.5 Hours
             </span>
-            <span className={styles.targetBadge}>Pillar 7 Target: 7.5–8.5 Hours</span>
           </div>
+
           <div className={styles.inputGrid}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Sleep Duration (hours)</span>
-              <input
-                className={styles.input}
-                value={sleepHours}
-                onChange={(e) => setSleepHours(e.target.value)}
-                type="number"
-                step="0.5"
-                placeholder="e.g. 8.0"
-              />
-            </label>
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>Energy &amp; Readiness (1–5)</span>
+              <div className={styles.fieldLabelRow}>
+                <label className={styles.fieldLabel} htmlFor="sleep-hours-input">
+                  Sleep Duration
+                </label>
+                {sleepHours && Number(sleepHours) >= 7.5 && (
+                  <span className={styles.fieldDescriptor}>Optimal</span>
+                )}
+              </div>
+              <div className={styles.inputWrapper}>
+                <input
+                  id="sleep-hours-input"
+                  className={styles.input}
+                  value={sleepHours}
+                  onChange={(e) => setSleepHours(e.target.value)}
+                  type="number"
+                  step="0.5"
+                  placeholder="e.g. 8.0"
+                />
+                <span className={styles.unitSuffix}>hrs</span>
+              </div>
+              <div className={styles.chipsRow}>
+                {['6.5', '7.0', '7.5', '8.0', '8.5'].map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    className={styles.quickChip}
+                    onClick={() => setSleepHours(h)}
+                  >
+                    {h}h
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <span className={styles.fieldLabel}>Energy &amp; Readiness</span>
+                <span className={styles.fieldDescriptor}>{getEnergyDescriptor(energyLevel)}</span>
+              </div>
               <div className={styles.ratingGroup}>
                 {ratingOptions.map((opt) => (
                   <button
@@ -241,8 +506,12 @@ export default function DailyLogPage() {
                 ))}
               </div>
             </div>
+
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>Sleep Quality (1–5)</span>
+              <div className={styles.fieldLabelRow}>
+                <span className={styles.fieldLabel}>Sleep Quality</span>
+                <span className={styles.fieldDescriptor}>{getSleepDescriptor(sleepQuality)}</span>
+              </div>
               <div className={styles.ratingGroup}>
                 {ratingOptions.map((opt) => (
                   <button
@@ -259,46 +528,180 @@ export default function DailyLogPage() {
           </div>
         </div>
 
-        {/* 3. Hydration & Daily Notes */}
+        {/* 3. Hydration & Subjective Notes */}
         <div className={styles.sectionBlock}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>
-              3. Hydration &amp; Subjective Notes
+            <div className={styles.sectionTitle}>
+              <div className={`${styles.sectionIconTile} ${styles.iconCyan}`}>
+                <Droplets size={17} strokeWidth={2.3} />
+              </div>
+              <span>3. Hydration &amp; Subjective Notes</span>
+            </div>
+            <span className={`${styles.targetBadge} ${styles.targetBadgeCyan}`}>
+              <Sparkles size={12} />
+              Pillar 8 Target: 3.5–4.0 Litres
             </span>
-            <span className={styles.targetBadge}>Pillar 8 Target: 3.5–4.0 Litres</span>
           </div>
+
           <div className={styles.inputGrid}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Water Consumed (ml)</span>
-              <input
-                className={styles.input}
-                value={water}
-                onChange={(e) => setWater(e.target.value)}
-                type="number"
-                placeholder="e.g. 3500"
-              />
-            </label>
-            <label className={`${styles.field} ${styles.fieldFullWidth}`}>
-              <span className={styles.fieldLabel}>Recovery Notes &amp; Fatigue Feedback</span>
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <label className={styles.fieldLabel} htmlFor="water-consumed-input">
+                  Water Consumed
+                </label>
+                {water && Number(water) > 0 && (
+                  <span className={styles.fieldDescriptor}>≈ {waterInLitres} L</span>
+                )}
+              </div>
+              <div className={styles.inputWrapper}>
+                <input
+                  id="water-consumed-input"
+                  className={styles.input}
+                  value={water}
+                  onChange={(e) => setWater(e.target.value)}
+                  type="number"
+                  placeholder="e.g. 3500"
+                />
+                <span className={styles.unitSuffix}>ml</span>
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Target intake: 3,500 – 4,000 ml
+              </span>
+            </div>
+
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <span className={styles.fieldLabel}>Quick Hydration Boosters</span>
+                <span className={styles.fieldDescriptor}>+ Click to add</span>
+              </div>
+              <div className={styles.boosterGrid}>
+                <button
+                  type="button"
+                  className={styles.boosterBtn}
+                  onClick={() => handleAddWater(250)}
+                >
+                  <span>+250 ml</span>
+                  <span className={styles.boosterSub}>Glass</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.boosterBtn}
+                  onClick={() => handleAddWater(500)}
+                >
+                  <span>+500 ml</span>
+                  <span className={styles.boosterSub}>Bottle</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.boosterBtn}
+                  onClick={() => handleAddWater(1000)}
+                >
+                  <span>+1,000 ml</span>
+                  <span className={styles.boosterSub}>Shaker</span>
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <div className={styles.fieldLabelRow}>
+                <span className={styles.fieldLabel}>Hydration Pacing Status</span>
+                <span className={styles.fieldDescriptor}>
+                  {Number(water) >= 3500 ? 'Target Achieved' : `${Math.round(Math.min(100, ((Number(water) || 0) / 3500) * 100))}%`}
+                </span>
+              </div>
+              <div className={styles.hydrationCardMini}>
+                <div className={styles.hydrationCardHeader}>
+                  <span className={styles.hydrationCardValue}>
+                    {waterInLitres} / 3.5 L
+                  </span>
+                  <span className={styles.hydrationCardTarget}>Daily Goal</span>
+                </div>
+                <div className={styles.hydrationCardBar}>
+                  <div
+                    className={styles.hydrationCardFill}
+                    style={{
+                      width: `${Math.min(100, Math.round(((Number(water) || 0) / 3500) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <span className={styles.hydrationCardStatus}>
+                  {Number(water) >= 3500
+                    ? '✓ Optimal hydration maintained'
+                    : Number(water) >= 2000
+                    ? 'Good hydration progress'
+                    : 'Regular hydration supports joint & muscle recovery'}
+                </span>
+              </div>
+            </div>
+
+            <div className={`${styles.field} ${styles.fieldFullWidth}`}>
+              <div className={styles.fieldLabelRow}>
+                <label className={styles.fieldLabel} htmlFor="recovery-notes-input">
+                  Recovery Notes &amp; Fatigue Feedback
+                </label>
+                <span className={styles.fieldDescriptor}>Click tags to quickly append</span>
+              </div>
               <textarea
+                id="recovery-notes-input"
                 className={styles.textarea}
                 value={recoveryNotes}
                 onChange={(e) => setRecoveryNotes(e.target.value)}
-                placeholder="Note soreness, energy levels, training sensations or fatigue debt..."
+                placeholder="Note muscle soreness, energy levels, training sensations or fatigue debt..."
               />
-            </label>
+              <div className={styles.tagChipsRow}>
+                {[
+                  'DOMS / Soreness',
+                  'High Energy',
+                  'Joint Stiffness',
+                  'Great Sleep',
+                  'Mild Fatigue',
+                  'Optimal Hydration',
+                ].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={styles.tagChip}
+                    onClick={() => handleAppendNoteTag(tag)}
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Action Row */}
         <div className={styles.actionRow}>
           <div>
-            {savedNotice && (
-              <span className={styles.saveNotice}>✓ Daily log successfully recorded!</span>
+            {savedNotice ? (
+              <span className={styles.saveNotice}>
+                <span className={styles.saveNoticeDot} />
+                Daily log successfully recorded!
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                Inputs automatically feed weekly recovery analytics and trend curves.
+              </span>
             )}
           </div>
-          <Button onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : 'Save daily log'}
-          </Button>
+          <div className={styles.actionButtonWrap}>
+            <Button
+              size="lg"
+              variant="primary"
+              onClick={save}
+              disabled={saving}
+            >
+              {saving ? (
+                'Saving check-in…'
+              ) : (
+                <>
+                  <Save size={16} />
+                  <span>Save daily log</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

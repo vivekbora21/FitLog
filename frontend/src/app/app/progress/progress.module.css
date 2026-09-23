@@ -83,12 +83,29 @@
   color: var(--text-secondary);
 }
 
+.cardSublabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.cardValueText {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-family: Outfit, sans-serif;
+}
+
 .deltaPositive {
   color: var(--color-primary-light);
 }
 
 .deltaNegative {
   color: var(--color-amber);
+}
+
+.deltaNeutral {
+  color: var(--text-secondary);
 }
 
 /* Shared section headers */
@@ -249,6 +266,12 @@
   color: var(--color-primary);
 }
 
+.chartsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
 .checkpointList {
   display: grid;
   gap: 0;
@@ -257,22 +280,73 @@
 
 .checkpointRow {
   display: grid;
-  grid-template-columns: 90px 1fr 2fr;
-  gap: 1rem;
-  padding: 0.75rem 0;
+  grid-template-columns: 190px 120px 1fr;
+  gap: 1.25rem;
+  padding: 0.95rem 0;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 0.85rem;
   align-items: center;
 }
 
-.checkpointDayWrap {
+@media (max-width: 768px) {
+  .checkpointRow {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+.checkpointDayCol {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.checkpointDayHeader {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+}
+
+.checkpointCalendarDate {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.checkpointTargetCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.checkpointTargetLabel {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.checkpointTargetValue {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.checkpointDescCol {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.checkpointTitle {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.9rem;
 }
 
 .checkpointDay {
   color: var(--color-primary);
+  font-weight: 700;
 }
 
 .checkpointDayPast {
@@ -281,9 +355,11 @@
 
 .statusBadge {
   font-size: 0.65rem;
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
-  font-weight: 700;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .statusBadgePassed {
@@ -296,8 +372,15 @@
   color: #0ea5e9;
 }
 
+.statusBadgeUpcoming {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-muted);
+}
+
 .checkpointNote {
   color: var(--text-secondary);
+  font-size: 0.825rem;
+  line-height: 1.4;
 }
 
 .photoNote {
@@ -345,4 +428,125 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 1rem;
+}
+
+/* ── Personal Records Pagination ────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 1rem 0.25rem 0.25rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pageSummary {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.pageControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pageBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageBtnLabel {
+  display: inline;
+}
+
+.pageNumbers {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pageNumber {
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pageNumber:hover {
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+}
+
+.pageNumberActive,
+.pageNumberActive:hover {
+  background: var(--color-primary);
+  color: #FFFFFF;
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.pageEllipsis {
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+@media (max-width: 600px) {
+  .pagination {
+    justify-content: center;
+  }
+
+  .pageBtnLabel {
+    display: none;
+  }
+
+  .pageBtn {
+    padding: 8px 10px;
+  }
+
+  .pageNumber {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
 }

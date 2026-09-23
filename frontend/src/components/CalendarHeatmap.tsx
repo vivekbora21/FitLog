@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import styles from './CalendarHeatmap.module.css';
 
 interface CalendarHeatmapProps {
   activityDates: Record<string, number>;
@@ -23,49 +24,30 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ activityDates 
     });
   }
 
-  const getColor = (count: number) => {
-    if (count === 0) return '#E2E8F0';
-    if (count === 1) return '#A7F3D0';
-    if (count === 2) return '#34D399';
-    return '#059669';
+  const getCountClass = (count: number) => {
+    if (count === 0) return styles.count0;
+    if (count === 1) return styles.count1;
+    if (count === 2) return styles.count2;
+    return styles.count3;
   };
 
   return (
     <div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(11, 1fr)',
-          gap: '5px',
-        }}
-      >
+      <div className={styles.grid}>
         {days.map((d, idx) => (
           <div
             key={idx}
             title={`${d.dateStr}: ${d.count} workout(s)`}
-            style={{
-              aspectRatio: '1',
-              borderRadius: '4px',
-              backgroundColor: getColor(d.count),
-              boxShadow: d.count > 0 ? '0 1px 3px rgba(5, 150, 105, 0.2)' : 'none',
-              transition: 'transform 150ms ease',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = 'scale(1.25)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-            }}
+            className={`${styles.dayCell} ${getCountClass(d.count)}`}
           />
         ))}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+      <div className={styles.legend}>
         <span>Less</span>
-        <span style={{ width: 10, height: 10, borderRadius: 2, background: '#E2E8F0' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 2, background: '#A7F3D0' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 2, background: '#34D399' }} />
-        <span style={{ width: 10, height: 10, borderRadius: 2, background: '#059669' }} />
+        <span className={`${styles.legendSwatch} ${styles.count0}`} />
+        <span className={`${styles.legendSwatch} ${styles.count1}`} />
+        <span className={`${styles.legendSwatch} ${styles.count2}`} />
+        <span className={`${styles.legendSwatch} ${styles.count3}`} />
         <span>More</span>
       </div>
     </div>

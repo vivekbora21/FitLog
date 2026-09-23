@@ -5,6 +5,8 @@ from rest_framework import status
 from users.models import User
 from workouts.models import JourneyProgram, ProgramDay, Routine
 from progress.models import DailyLog, WeightEntry
+from nutrition.models import MacroTarget, NutritionDay, MealEntry
+from analytics.pacing import resolve_start_weight, resolve_target_weekly_rate, resolve_target_weight, calculate_journey_pacing
 
 class AnalyticsAdherenceTests(TestCase):
     def setUp(self):
@@ -148,4 +150,158 @@ class AnalyticsAdherenceTests(TestCase):
         self.assertEqual(rec['status'], 'FATIGUE_RISK')
         # Rule 5 check in insight
         self.assertIn('Rule 5', pacing['copilot_insight'])
+
+
+class RightPathPacingEngineTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="pacing_athlete@example.com",
+            username="pacing_athlete",
+            password="testpassword123"
+        )
+        self.client.force_authenticate(user=self.user)
+        self.macro_target, _ = MacroTarget.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'daily_calories': 2160,
+                'protein_g': 165,
+                'carbs_g': 240,
+                'fat_g': 55,
+                'water_ml': 3500,
+            }
+        )
+
+    def test_copilot_insight_calibration_references_macro_target(self):
+        program = JourneyProgram.objects.create(
+            user=self.user,
+            name="Cut 60",
+            mode="CUT",
+            current_day=3,
+            duration_days=60,
+            active=True,
+            start_date=date.today(),
+            start_weight_kg=80.0,
+        )
+        pacing = calculate_journey_pacing(self.user, program)
+        self.assertTrue(pacing['is_calibrating'])
+        self.assertIn("165g protein target", pacing['copilot_insight'])
+        self.assertIn("2,160 kcal/day", pacing['copilot_insight'])
+
+    def test_copilot_insight_cut_too_fast_with_logged_intake_gap(self):
+        start_d = date.today() - timedelta(days=14)
+        program = JourneyProgram.objects.create(
+            user=self.user,
+            name="Cut 60",
+            mode="CUT",
+            current_day=14,
+            duration_days=60,
+            active=True,
+            start_date=start_d,
+            start_weight_kg=80.0,
+            target_weight_kg=75.7,
+            target_weekly_rate_kg=-0.5,
+        )
+        # Log fast weight drop (80.0 -> 77.8 in 14 days = -1.1 kg/wk)
+        WeightEntry.objects.create(user=self.user, date=start_d, weight_kg=80.0)
+        WeightEntry.objects.create(user=self.user, date=start_d + timedelta(days=7), weight_kg=78.9)
+        WeightEntry.objects.create(user=self.user, date=date.today(), weight_kg=77.8)
+
+        # Log meals averaging 1,800 kcal (360 kcal deficit gap below 2,160 target)
+        for i in range(5):
+            d = date.today() - timedelta(days=i)
+            nd = NutritionDay.objects.create(user=self.user, date=d)
+            MealEntry.objects.create(nutrition_day=nd, meal_type='LUNCH', name='Lunch', calories=1000, protein_g=80)
+            MealEntry.objects.create(nutrition_day=nd, meal_type='DINNER', name='Dinner', calories=800, protein_g=70)
+
+        pacing = calculate_journey_pacing(self.user, program)
+        self.assertEqual(pacing['velocity']['status'], 'TOO_FAST')
+        insight = pacing['copilot_insight']
+        self.assertIn("1,800 kcal/day", insight)
+        self.assertIn("2,160 kcal target", insight)
+        self.assertIn("360 kcal deficit gap", insight)
+        self.assertIn("165g protein", insight)
+
+    def test_copilot_insight_cut_too_fast_without_meal_logs_uses_velocity_gap(self):
+        start_d = date.today() - timedelta(days=14)
+        program = JourneyProgram.objects.create(
+            user=self.user,
+            name="Cut 60",
+            mode="CUT",
+            current_day=14,
+            duration_days=60,
+            active=True,
+            start_date=start_d,
+            start_weight_kg=80.0,
+            target_weight_kg=75.7,
+            target_weekly_rate_kg=-0.5,
+        )
+        WeightEntry.objects.create(user=self.user, date=start_d, weight_kg=80.0)
+        WeightEntry.objects.create(user=self.user, date=start_d + timedelta(days=7), weight_kg=78.9)
+        WeightEntry.objects.create(user=self.user, date=date.today(), weight_kg=77.8)
+
+        pacing = calculate_journey_pacing(self.user, program)
+        self.assertEqual(pacing['velocity']['status'], 'TOO_FAST')
+        insight = pacing['copilot_insight']
+        self.assertIn("velocity gap calls for", insight)
+        self.assertIn("2,160 kcal", insight)
+        self.assertIn("165g protein", insight)
+
+    def test_copilot_insight_cut_stalled_with_excess_intake(self):
+        start_d = date.today() - timedelta(days=14)
+        program = JourneyProgram.objects.create(
+            user=self.user,
+            name="Cut 60",
+            mode="CUT",
+            current_day=14,
+            duration_days=60,
+            active=True,
+            start_date=start_d,
+            start_weight_kg=80.0,
+            target_weight_kg=75.7,
+            target_weekly_rate_kg=-0.5,
+        )
+        # Stalled weight (80.0 -> 80.0 over 14 days)
+        WeightEntry.objects.create(user=self.user, date=start_d, weight_kg=80.0)
+        WeightEntry.objects.create(user=self.user, date=start_d + timedelta(days=7), weight_kg=80.0)
+        WeightEntry.objects.create(user=self.user, date=date.today(), weight_kg=80.0)
+
+        # Log meals averaging 2,360 kcal (+200 kcal above 2,160 target)
+        for i in range(5):
+            d = date.today() - timedelta(days=i)
+            nd = NutritionDay.objects.create(user=self.user, date=d)
+            MealEntry.objects.create(nutrition_day=nd, meal_type='LUNCH', name='Lunch', calories=1360, protein_g=80)
+            MealEntry.objects.create(nutrition_day=nd, meal_type='DINNER', name='Dinner', calories=1000, protein_g=70)
+
+        pacing = calculate_journey_pacing(self.user, program)
+        self.assertEqual(pacing['velocity']['status'], 'STALLED')
+        insight = pacing['copilot_insight']
+        self.assertIn("2,360 kcal/day", insight)
+        self.assertIn("200 kcal above your 2,160 kcal target", insight)
+
+    def test_start_journey_deduplication_and_rate_resolution(self):
+        # Test start_journey endpoint resolving start weight and default weekly rate
+        response = self.client.post('/api/workouts/sessions/start-journey/', {
+            'mode': 'CUT',
+            'duration_days': 60,
+            'start_weight_kg': 82.5,
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        program = data['program']
+        self.assertEqual(program['start_weight_kg'], 82.5)
+        self.assertEqual(program['target_weekly_rate_kg'], -0.5)
+        # 82.5 + (-0.5 * (60 / 7)) = 82.5 - 4.2857 = 78.2
+        self.assertEqual(program['target_weight_kg'], 78.2)
+
+        # Check pacing payload includes copilot_insight referencing macro target
+        pacing = data['pacing']
+        self.assertIn('copilot_insight', pacing)
+        self.assertIn('165g protein target (2,160 kcal/day)', pacing['copilot_insight'])
+
+        # Verify WeightEntry was created for today
+        latest_w = WeightEntry.objects.filter(user=self.user, date=date.today()).first()
+        self.assertIsNotNone(latest_w)
+        self.assertEqual(latest_w.weight_kg, 82.5)
+
 

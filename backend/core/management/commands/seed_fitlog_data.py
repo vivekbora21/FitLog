@@ -10,7 +10,8 @@ from gyms.models import Gym, GymBranch, GymEquipment
 from memberships.models import GymMembership, TrainerClientAssignment, GymInvitation
 from exercises.models import MuscleGroup, EquipmentType, Exercise
 from workouts.models import Routine, RoutineExercise, AssignedWorkout, WorkoutSession, WorkoutExercise, WorkoutSet, JourneyProgram, ProgramDay, CardioEntry
-from nutrition.models import MacroTarget, NutritionDay, MealEntry
+from nutrition.models import NutritionDay, MealEntry
+from nutrition.targets import get_or_create_macro_target
 from progress.models import WeightEntry, BodyMeasurement, PersonalRecord
 from notifications.models import Notification
 from core.models import AuditLog
@@ -394,10 +395,7 @@ class Command(BaseCommand):
         WorkoutSet.objects.get_or_create(workout_exercise=we_sq, set_number=3, defaults={'set_type': 'NORMAL', 'weight_kg': 135.0, 'reps': 4, 'completed': True})
 
         # 12. Nutrition
-        MacroTarget.objects.get_or_create(
-            user=member_user,
-            defaults={'daily_calories': 2600, 'protein_g': 180, 'carbs_g': 280, 'fat_g': 75, 'water_ml': 3200}
-        )
+        get_or_create_macro_target(member_user)
         today_nutri, _ = NutritionDay.objects.get_or_create(
             user=member_user,
             date=date.today(),

@@ -218,7 +218,7 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
         {/* Content Body */}
         <div className={styles.body}>
           {error && (
-            <div className={styles.archiveNote} style={{ background: 'rgba(225, 29, 72, 0.08)', borderColor: '#fda4af', color: '#be123c' }}>
+            <div className={styles.errorNote}>
               <AlertCircle size={15} /> {error}
             </div>
           )}
@@ -260,7 +260,7 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
               </div>
 
               {/* Start scale weight input */}
-              <div className={styles.formGroup} style={{ marginTop: '0.5rem' }}>
+              <div className={`${styles.formGroup} ${styles.formGroupSpaced}`}>
                 <label className={styles.label}>Your Current Scale Weight (kg)</label>
                 <input
                   type="number"
@@ -270,7 +270,7 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
                   onChange={(e) => setStartWeight(parseFloat(e.target.value) || 0)}
                   placeholder="e.g. 77.5"
                 />
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                <small className={styles.inputHelpText}>
                   Entering today&apos;s scale weight automatically synchronizes your weight log and anchors your starting curve.
                 </small>
               </div>
@@ -382,10 +382,10 @@ export const PlanSelectorModal: React.FC<PlanSelectorModalProps> = ({
                 <span>
                   Target Velocity: <strong>{customVelocity > 0 ? `+${customVelocity}` : customVelocity} kg/week</strong> over {customDays} days.
                   {customMode === 'CUT' && customVelocity < -1.0 && (
-                    <span style={{ color: '#EF4444', marginLeft: 4 }}>(⚠️ Fast pace; muscle catabolism risk)</span>
+                    <span className={styles.warningText}>(⚠️ Fast pace; muscle catabolism risk)</span>
                   )}
                   {customMode === 'BULK' && customVelocity > 0.55 && (
-                    <span style={{ color: '#EF4444', marginLeft: 4 }}>(⚠️ High surplus; excess fat gain risk)</span>
+                    <span className={styles.warningText}>(⚠️ High surplus; excess fat gain risk)</span>
                   )}
                 </span>
               </div>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, X, Bell } from 'lucide-react';
 import { Button } from './ui/Button';
+import styles from './RestTimer.module.css';
 
 interface RestTimerContextType {
   startTimer: (seconds: number) => void;
@@ -92,28 +93,10 @@ export const RestTimerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <RestTimerContext.Provider value={contextValue}>
       {children}
       {isActive && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            zIndex: 9999,
-            background: 'rgba(255, 255, 255, 0.96)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid var(--border-glow)',
-            boxShadow: '0 12px 36px rgba(15, 23, 42, 0.12), 0 0 20px rgba(16, 185, 129, 0.15)',
-            borderRadius: '20px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            color: 'var(--text-primary)',
-            animation: 'slideUp 300ms ease-out',
-          }}
-        >
+        <div className={styles.floatingToast}>
           {/* Circular Countdown Progress */}
-          <div style={{ position: 'relative', width: '64px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="64" height="64" style={{ transform: 'rotate(-90deg)' }}>
+          <div className={styles.circleWrap}>
+            <svg width="64" height="64" className={styles.svgRotate}>
               <circle
                 cx="32"
                 cy="32"
@@ -132,19 +115,19 @@ export const RestTimerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
-                style={{ transition: 'stroke-dashoffset 1s linear' }}
+                className={styles.progressCircle}
               />
             </svg>
-            <span style={{ position: 'absolute', fontWeight: 800, fontSize: '0.95rem', fontFamily: 'Outfit, sans-serif' }}>
+            <span className={styles.countdownText}>
               {formatTime(secondsRemaining)}
             </span>
           </div>
 
-          <div>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>
+          <div className={styles.controlsBody}>
+            <div className={styles.restLabel}>
               Rest Period
             </div>
-            <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+            <div className={styles.actionRow}>
               <Button size="sm" variant="secondary" onClick={() => addTime(30)}>
                 +30s
               </Button>

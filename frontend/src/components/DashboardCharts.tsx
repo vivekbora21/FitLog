@@ -81,7 +81,7 @@ interface DashboardChartsProps {
 export function DashboardCharts({
   trends,
   targetWeight = 74.0,
-  dailyCaloriesTarget = 2160,
+  dailyCaloriesTarget,
   programDuration = 60,
   modeLabel = 'Goal',
 }: DashboardChartsProps) {
@@ -140,7 +140,6 @@ export function DashboardCharts({
       latestProtein: latest.protein,
       avgCalories,
       targetCalories: dailyCaloriesTarget,
-      adherencePct: avgCalories ? Math.min(100, Math.round((avgCalories / dailyCaloriesTarget) * 100)) : 0,
     };
   }, [nutritionPoints, dailyCaloriesTarget]);
 
@@ -240,7 +239,7 @@ export function DashboardCharts({
           <StatTile icon={Target} tone="amber" label="Daily Target" value={nutritionMetrics.targetCalories} unit="kcal" />
           <StatTile icon={Flame} tone="slate" label="Latest Intake" value={nutritionMetrics.latestCalories} unit="kcal" />
           <StatTile icon={Dumbbell} tone="emerald" label="Latest Protein" value={nutritionMetrics.latestProtein} unit="g" />
-          <StatTile icon={Percent} tone="emerald" label="Adherence" value={nutritionMetrics.adherencePct} unit="%" />
+          <StatTile icon={Percent} tone="emerald" label="7-Day Avg" value={nutritionMetrics.avgCalories.toLocaleString()} unit="kcal" />
         </div>
       )}
 
@@ -299,7 +298,7 @@ export function DashboardCharts({
             <MetricChart
               data={nutritionChartData}
               title="Daily Caloric Intake vs Target"
-              subtitle={`Daily calories consumed vs ${dailyCaloriesTarget.toLocaleString()} kcal target`}
+              subtitle={dailyCaloriesTarget ? `Daily calories consumed vs ${dailyCaloriesTarget.toLocaleString()} kcal target` : 'Daily calories consumed'}
               unit="kcal"
               type="bar"
               color="#D97706"

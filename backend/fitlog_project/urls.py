@@ -8,7 +8,7 @@ from gyms.views import GymViewSet
 from memberships.views import GymMembershipViewSet, TrainerClientViewSet, GymInvitationViewSet, AcceptInvitationView
 from exercises.views import ExerciseViewSet, MuscleGroupViewSet, EquipmentTypeViewSet
 from workouts.views import WorkoutSessionViewSet, RoutineViewSet, AssignedWorkoutViewSet, CardioEntryViewSet
-from nutrition.views import NutritionDayView, MealEntryViewSet, MacroTargetView
+from nutrition.views import NutritionDayView, MealEntryViewSet, MacroTargetView, FoodViewSet, RecommendedMacroTargetView, RecentFoodsView, RepeatYesterdayView
 from progress.views import WeightEntryViewSet, BodyMeasurementViewSet, PersonalRecordViewSet, DailyLogViewSet
 from notifications.views import NotificationViewSet
 from core.views import AuditLogViewSet
@@ -27,6 +27,7 @@ router.register(r'workouts/routines', RoutineViewSet, basename='routine')
 router.register(r'assigned-workouts', AssignedWorkoutViewSet, basename='assigned-workout')
 router.register(r'workouts/cardio', CardioEntryViewSet, basename='cardio')
 router.register(r'nutrition/meals', MealEntryViewSet, basename='meal')
+router.register(r'nutrition/foods', FoodViewSet, basename='food')
 router.register(r'progress/weight', WeightEntryViewSet, basename='weight')
 router.register(r'progress/measurements', BodyMeasurementViewSet, basename='measurement')
 router.register(r'progress/prs', PersonalRecordViewSet, basename='pr')
@@ -47,6 +48,9 @@ urlpatterns = [
     # Custom Domain Actions
     path('api/invitations/<uuid:token>/accept/', AcceptInvitationView.as_view(), name='accept_invitation'),
     path('api/nutrition/macro-targets/', MacroTargetView.as_view(), name='macro_targets'),
+    path('api/nutrition/macro-targets/recommended/', RecommendedMacroTargetView.as_view(), name='macro_targets_recommended'),
+    path('api/nutrition/recent-foods/', RecentFoodsView.as_view(), name='recent_foods'),
+    path('api/nutrition/repeat-yesterday/', RepeatYesterdayView.as_view(), name='repeat_yesterday'),
     path('api/analytics/dashboard/', DashboardStatsView.as_view(), name='dashboard_stats'),
     path('api/analytics/journey-status/', JourneyPacingStatusView.as_view(), name='journey_pacing_status'),
 

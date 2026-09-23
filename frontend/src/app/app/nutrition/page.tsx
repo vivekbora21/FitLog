@@ -1,9 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Droplets, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import { Plus, Droplets, Search, Calculator, RotateCcw, Trash2, Clock, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
-import { NutritionDay, MacroTarget, MealEntry, JourneyPacingData, JourneyMode } from '@/lib/types';
+import {
+  NutritionDayResponse,
+  MacroTarget,
+  Food,
+  RecentFood,
+  RecommendedTargets,
+  JourneyPacingData,
+  JourneyMode,
+  MealEntry,
+} from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -11,37 +21,22 @@ import { Modal } from '@/components/ui/Modal';
 import { MacroRing } from '@/components/MacroRing';
 import styles from './nutrition.module.css';
 
-// Sourced from the user's "New start.xlsx" Diet Plan sheet — content kept verbatim.
-const optionA = [
-  ['Meal 1: Pre-Workout', 'Black Coffee + Soaked Almonds + Banana', '1 mug coffee + 6 almonds + 1 banana', 150, 3, 28, 4],
-  ['Meal 2: Breakfast', 'Rolled Oats with Toned Milk & Cinnamon', '65g oats + 200ml toned milk', 340, 14, 54, 6],
-  ['Meal 2: Breakfast', 'Whole Boiled Eggs + Steamed Egg Whites', '2 whole eggs + 3 egg whites', 230, 23, 2, 11],
-  ['Meal 3: Mid-Morning', 'Green Tea & Roasted Chana (Phutana)', '1 cup tea + 35g roasted chana', 125, 8, 19, 2],
-  ['Meal 4: Lunch', 'Soya Chunks Bhurji / Chicken Curry + Dal + Rotis', '50g soya (or 120g chicken) + dal + 2 rotis + salad', 630, 50, 82, 8],
-  ['Meal 5: Evening Snack', 'Homemade Low-Fat Curd (Dahi) + Roasted Chana', '200g dahi + 35g roasted chana', 240, 17, 27, 6],
-  ['Meal 6: Dinner', 'Pan-Seared Chicken Breast / Paneer + Rice + Sabzi', '150g chicken (or 130g paneer) + 160g rice + sabzi', 445, 50, 52, 6],
-] as const;
-const optionATotal = { calories: 2160, protein: 165, carbs: 264, fat: 43 };
+const MISSING_FIELD_LABELS: Record<string, string> = {
+  weight: 'weight',
+  height_cm: 'height',
+  date_of_birth: 'date of birth',
+  sex: 'sex',
+};
 
-const optionB = [
-  ['Meal 1: Pre-Workout', 'Black Coffee + 5 Soaked Almonds', '1 mug coffee + 5 almonds', 40, 1, 1, 3],
-  ['Meal 2: Breakfast', 'Rolled Oats with Toned Milk & Boiled Eggs', '55g oats + 180ml milk + 2 whole eggs', 450, 26, 49, 16],
-  ['Meal 3: Mid-Morning', 'Fresh Ripe Banana + Green Tea', '1 medium banana + 1 cup green tea', 100, 1, 25, 0],
-  ['Meal 4: Lunch', 'Spiced Chicken Breast Curry / Soya + Dal + Rotis', '65g chicken (or 45g soya) + dal + 2 rotis + salad', 515, 40, 77, 6],
-  ['Meal 5: Evening Snack', 'Dry Roasted Chana + Low-Fat Dahi', '45g roasted chana + 180g homemade curd', 280, 19, 33, 6],
-  ['Meal 6: Dinner', 'Chicken & Egg / Soya Bhurji + Rice + Sabzi', '65g chicken + egg white (or soya + paneer) + 200g rice + sabzi', 535, 44, 70, 10],
-] as const;
-const optionBTotal = { calories: 1920, protein: 131, carbs: 255, fat: 41 };
-
-const staples = [
-  ['Soya Chunks (Dry)', '40g dry weighed', '21g', 138, 'Tier 1: 52% protein (soak & squeeze)'],
-  ['Whole Farm Eggs', '3 large eggs', '19g', 210, 'Tier 1: bioavailable complete protein'],
-  ['Skinless Chicken Breast', '100g raw weighed', '31g', 120, 'Tier 1: high leucine lean muscle anchor'],
-  ['Yellow Moong / Masoor Dal', '60g raw (1 cup cooked)', '14g', 205, 'Tier 2: essential daily amino pulse'],
-  ['Homemade Low-Fat Dahi', '200g set curd', '9g', 120, 'Tier 2: slow-release casein & gut probiotic'],
-  ['Roasted Chana (Bengal Gram)', '50g dry weighed', '11g', 180, 'Tier 2: low-GI high-fiber portable snack'],
-  ['Rolled Oats (Plain)', '60g dry weighed', '8g', 230, 'Tier 3: beta-glucan heart & sustained energy'],
-] as const;
+function scaleFood(food: Food | RecentFood, quantity: number) {
+  const q = Number(quantity) || 0;
+  return {
+    calories: Math.round(food.calories * q),
+    protein: Math.round(food.protein_g * q * 10) / 10,
+    carbs: Math.round(food.carbs_g * q * 10) / 10,
+    fat: Math.round(food.fat_g * q * 10) / 10,
+  };
+}
 
 function getAdjustmentProtocol(mode: JourneyMode) {
   if (mode === 'BULK') {
@@ -69,28 +64,48 @@ function getAdjustmentProtocol(mode: JourneyMode) {
 }
 
 export default function NutritionPage() {
-  const [data, setData] = useState<{ day: NutritionDay; targets: MacroTarget } | null>(null);
+  const [data, setData] = useState<NutritionDayResponse | null>(null);
   const [pacing, setPacing] = useState<JourneyPacingData | null>(null);
+  const [recommended, setRecommended] = useState<RecommendedTargets | null>(null);
+  const [recentFoods, setRecentFoods] = useState<RecentFood[]>([]);
+  const [applyingTargets, setApplyingTargets] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [repeatingMeal, setRepeatingMeal] = useState<string | null>(null);
+  const [deletingMealId, setDeletingMealId] = useState<string | null>(null);
   const [addMealModal, setAddMealModal] = useState(false);
 
-  // Add meal form state
+  // Add meal modal state
   const [mealType, setMealType] = useState<'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK'>('BREAKFAST');
-  const [foodName, setFoodName] = useState('');
-  const [calories, setCalories] = useState<number>(450);
-  const [protein, setProtein] = useState<number>(35);
-  const [carbs, setCarbs] = useState<number>(50);
-  const [fat, setFat] = useState<number>(10);
+  const [modalMode, setModalMode] = useState<'recent' | 'manual'>('recent');
+
+  // Food picker state: Recent foods & search (primary)
+  const [foodQuery, setFoodQuery] = useState('');
+  const [foodResults, setFoodResults] = useState<Food[]>([]);
+  const [selectedFood, setSelectedFood] = useState<Food | RecentFood | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+
+  // 6-field manual form state (fallback)
+  const [manualName, setManualName] = useState('');
+  const [manualQuantity, setManualQuantity] = useState<number>(1);
+  const [manualCalories, setManualCalories] = useState<number>(400);
+  const [manualProtein, setManualProtein] = useState<number>(30);
+  const [manualCarbs, setManualCarbs] = useState<number>(45);
+  const [manualFat, setManualFat] = useState<number>(10);
+  const [saveAsFood, setSaveAsFood] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadNutrition = async () => {
     try {
-      const [res, pacingRes] = await Promise.all([
+      const [res, pacingRes, recRes, recentsRes] = await Promise.all([
         api.getNutrition('today'),
         api.getJourneyPacingStatus().catch(() => null),
+        api.getRecommendedTargets().catch(() => null),
+        api.getRecentFoods().catch(() => []),
       ]);
       setData(res);
       setPacing(pacingRes);
+      setRecommended(recRes);
+      setRecentFoods(recentsRes || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -102,26 +117,150 @@ export default function NutritionPage() {
     loadNutrition();
   }, []);
 
-  const handleAddMeal = async () => {
-    if (!foodName.trim()) {
-      alert('Please enter food name');
-      return;
-    }
-    setSaving(true);
+  useEffect(() => {
+    if (!addMealModal || modalMode === 'manual') return;
+    const timer = setTimeout(() => {
+      api.searchFoods(foodQuery.trim()).then(setFoodResults).catch(console.error);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [foodQuery, addMealModal, modalMode]);
+
+  const resetModalState = () => {
+    setSelectedFood(null);
+    setQuantity(1);
+    setFoodQuery('');
+    setManualName('');
+    setManualQuantity(1);
+    setManualCalories(400);
+    setManualProtein(30);
+    setManualCarbs(45);
+    setManualFat(10);
+    setSaveAsFood(false);
+    setModalMode('recent');
+  };
+
+  const openLogModal = (type?: 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK') => {
+    if (type) setMealType(type);
+    resetModalState();
+    setAddMealModal(true);
+  };
+
+  const handleApplyTargets = async () => {
+    setApplyingTargets(true);
     try {
-      await api.addMeal({
-        name: foodName,
-        meal_type: mealType,
-        calories: Number(calories) || 0,
-        protein_g: Number(protein) || 0,
-        carbs_g: Number(carbs) || 0,
-        fat_g: Number(fat) || 0,
-      });
-      setAddMealModal(false);
-      setFoodName('');
-      loadNutrition();
+      await api.applyRecommendedTargets();
+      await loadNutrition();
     } catch (err) {
       console.error(err);
+    } finally {
+      setApplyingTargets(false);
+    }
+  };
+
+  const handleRepeatYesterday = async (type?: string) => {
+    setRepeatingMeal(type || 'ALL');
+    try {
+      await api.repeatYesterdayMeal(type);
+      await loadNutrition();
+      setAddMealModal(false);
+    } catch (err: any) {
+      alert(err.message || 'Could not repeat yesterday’s meal.');
+    } finally {
+      setRepeatingMeal(null);
+    }
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    if (!confirm('Remove this food item?')) return;
+    setDeletingMealId(mealId);
+    try {
+      await api.deleteMeal(mealId);
+      await loadNutrition();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeletingMealId(null);
+    }
+  };
+
+  const handleAddMeal = async () => {
+    setSaving(true);
+    try {
+      if (modalMode === 'manual') {
+        if (!manualName.trim()) {
+          alert('Please enter a food or meal name');
+          setSaving(false);
+          return;
+        }
+        const qty = Number(manualQuantity) || 1;
+        const totalCalories = Number(manualCalories) || 0;
+        const totalProtein = Number(manualProtein) || 0;
+        const totalCarbs = Number(manualCarbs) || 0;
+        const totalFat = Number(manualFat) || 0;
+
+        if (saveAsFood) {
+          const unitKcal = Math.round(totalCalories / qty);
+          const unitProt = Math.round((totalProtein / qty) * 10) / 10;
+          const unitCarb = Math.round((totalCarbs / qty) * 10) / 10;
+          const unitFat = Math.round((totalFat / qty) * 10) / 10;
+          const food = await api.createFood({
+            name: manualName.trim(),
+            serving_label: '1 serving',
+            calories: unitKcal,
+            protein_g: unitProt,
+            carbs_g: unitCarb,
+            fat_g: unitFat,
+          });
+          await api.addMeal({
+            meal_type: mealType,
+            food: food.id,
+            quantity: qty,
+            servings: qty,
+          });
+        } else {
+          await api.addMeal({
+            name: manualName.trim(),
+            meal_type: mealType,
+            quantity: qty,
+            servings: qty,
+            calories: totalCalories,
+            protein_g: totalProtein,
+            carbs_g: totalCarbs,
+            fat_g: totalFat,
+          });
+        }
+      } else {
+        if (!selectedFood) {
+          alert('Pick a food from your recents or search results');
+          setSaving(false);
+          return;
+        }
+        const qty = Number(quantity) || 1;
+        const foodId = ('food_id' in selectedFood && selectedFood.food_id) ? selectedFood.food_id : selectedFood.id;
+
+        if ('is_custom' in selectedFood && !('food_id' in selectedFood && !selectedFood.food_id)) {
+          await api.addMeal({
+            meal_type: mealType,
+            food: foodId,
+            quantity: qty,
+            servings: qty,
+          });
+        } else {
+          const scaled = scaleFood(selectedFood, qty);
+          await api.addMeal({
+            name: selectedFood.name,
+            meal_type: mealType,
+            quantity: qty,
+            servings: qty,
+            ...scaled,
+          });
+        }
+      }
+      setAddMealModal(false);
+      resetModalState();
+      await loadNutrition();
+    } catch (err: any) {
+      alert(err.message || 'Error logging food');
     } finally {
       setSaving(false);
     }
@@ -133,7 +272,7 @@ export default function NutritionPage() {
     const updated = current + amount;
     try {
       await api.updateWater('today', updated);
-      loadNutrition();
+      await loadNutrition();
     } catch (err) {
       console.error(err);
     }
@@ -153,12 +292,15 @@ export default function NutritionPage() {
     SNACK: 'Snacks & Fuel',
   };
 
-  const duration = pacing?.duration_days || 60;
   const mode = (pacing?.mode || 'CUT') as JourneyMode;
-  const modeLabel = pacing?.mode_label || 'Nutrition';
-  const targetKcal = data?.targets?.daily_calories || 2160;
-  const targetProtein = data?.targets?.protein_g || 150;
+  const targetKcal = data?.targets?.daily_calories;
+  const targetProtein = data?.targets?.protein_g;
   const adjustmentRows = getAdjustmentProtocol(mode);
+
+  const yesterdayMeals = data?.yesterday_meals || [];
+  const modalYesterdayMeals = yesterdayMeals.filter((m) => m.meal_type === mealType);
+  const modalYesterdayKcal = modalYesterdayMeals.reduce((acc, m) => acc + m.calories, 0);
+  const modalYesterdayProtein = modalYesterdayMeals.reduce((acc, m) => acc + m.protein_g, 0);
 
   return (
     <div className={styles.page}>
@@ -171,7 +313,7 @@ export default function NutritionPage() {
           </p>
         </div>
 
-        <Button variant="primary" onClick={() => setAddMealModal(true)}>
+        <Button variant="primary" onClick={() => openLogModal()}>
           <Plus size={16} />
           <span>Log Food</span>
         </Button>
@@ -183,7 +325,7 @@ export default function NutritionPage() {
           <MacroRing
             label="Calories"
             current={data?.day.total_calories || 0}
-            target={targetKcal}
+            target={targetKcal ?? 0}
             unit=" kcal"
             color="#10B981"
             size={135}
@@ -192,7 +334,7 @@ export default function NutritionPage() {
           <MacroRing
             label="Protein"
             current={data?.day.total_protein || 0}
-            target={targetProtein}
+            target={targetProtein ?? 0}
             unit="g"
             color="#06B6D4"
             size={120}
@@ -217,6 +359,67 @@ export default function NutritionPage() {
             strokeWidth={10}
           />
         </div>
+      </Card>
+
+      {/* Where the calorie target comes from: BMR -> TDEE -> goal adjustment */}
+      <Card className={styles.targetCard}>
+        <div className={styles.targetHeader}>
+          <div className={styles.targetHeaderLeft}>
+            <Calculator size={20} color="var(--color-primary)" />
+            <h3 className={styles.targetTitle}>Where your target comes from</h3>
+          </div>
+          {recommended?.available && data && recommended.daily_calories !== data.targets.daily_calories && (
+            <Button size="sm" variant="primary" onClick={handleApplyTargets} disabled={applyingTargets}>
+              {applyingTargets ? 'Applying...' : `Use ${recommended.daily_calories.toLocaleString()} kcal`}
+            </Button>
+          )}
+        </div>
+
+        {!recommended ? (
+          <p className={styles.targetHint}>Loading…</p>
+        ) : !recommended.available ? (
+          <p className={styles.targetHint}>
+            Your current targets were typed in by hand. Add your{' '}
+            {recommended.missing.map((f) => MISSING_FIELD_LABELS[f] || f).join(', ')} in{' '}
+            <Link href="/app/settings" className={styles.targetLink}>Settings</Link> to compute them from your BMR and goal.
+          </p>
+        ) : (
+          <>
+            <div className={styles.targetSteps}>
+              <div className={styles.targetStep}>
+                <small className={styles.targetStepLabel}>BMR (Mifflin-St Jeor)</small>
+                <strong className={styles.targetStepValue}>{recommended.bmr.toLocaleString()} kcal</strong>
+                <span className={styles.targetStepSub}>
+                  {recommended.inputs.weight_kg} kg ({recommended.inputs.weight_source}) · {recommended.inputs.height_cm} cm · {recommended.inputs.age_years} y
+                </span>
+              </div>
+              <div className={styles.targetStep}>
+                <small className={styles.targetStepLabel}>Maintenance (TDEE)</small>
+                <strong className={styles.targetStepValue}>{recommended.tdee.toLocaleString()} kcal</strong>
+                <span className={styles.targetStepSub}>BMR × {recommended.activity_factor} ({recommended.inputs.activity_level.toLowerCase()} activity)</span>
+              </div>
+              <div className={styles.targetStep}>
+                <small className={styles.targetStepLabel}>Goal adjustment</small>
+                <strong className={styles.targetStepValue}>
+                  {recommended.calorie_adjustment > 0 ? '+' : ''}{recommended.calorie_adjustment} kcal
+                </strong>
+                <span className={styles.targetStepSub}>{recommended.goal_source}</span>
+              </div>
+              <div className={`${styles.targetStep} ${styles.targetStepResult}`}>
+                <small className={styles.targetStepLabel}>Recommended</small>
+                <strong className={styles.targetStepValue}>{recommended.daily_calories.toLocaleString()} kcal</strong>
+                <span className={styles.targetStepSub}>
+                  P {recommended.protein_g}g ({recommended.protein_g_per_kg} g/kg) · C {recommended.carbs_g}g · F {recommended.fat_g}g
+                </span>
+              </div>
+            </div>
+            {data && recommended.daily_calories !== data.targets.daily_calories && (
+              <p className={styles.targetHint}>
+                Your saved target is {data.targets.daily_calories.toLocaleString()} kcal. Nothing changes until you choose to apply the recommendation.
+              </p>
+            )}
+          </>
+        )}
       </Card>
 
       {/* Water Hydration Tracker */}
@@ -258,6 +461,10 @@ export default function NutritionPage() {
           const categoryMeals = data?.day.meals.filter((m) => m.meal_type === cat) || [];
           const catCalories = categoryMeals.reduce((acc, m) => acc + m.calories, 0);
 
+          const yesterdayCatMeals = yesterdayMeals.filter((m) => m.meal_type === cat);
+          const yesterdayKcal = yesterdayCatMeals.reduce((acc, m) => acc + m.calories, 0);
+          const yesterdayProt = yesterdayCatMeals.reduce((acc, m) => acc + m.protein_g, 0);
+
           return (
             <Card key={cat}>
               <div className={styles.mealCardHeader}>
@@ -266,143 +473,94 @@ export default function NutritionPage() {
                   <Badge variant="emerald">{catCalories} kcal</Badge>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setMealType(cat);
-                    setAddMealModal(true);
-                  }}
-                >
-                  <Plus size={14} /> Add Item
-                </Button>
+                <div className={styles.mealCardHeaderRight}>
+                  {yesterdayCatMeals.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleRepeatYesterday(cat)}
+                      disabled={repeatingMeal === cat}
+                    >
+                      <RotateCcw size={13} />
+                      <span>{repeatingMeal === cat ? 'Repeating...' : `Repeat Yesterday (${yesterdayKcal} kcal)`}</span>
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => openLogModal(cat)}
+                  >
+                    <Plus size={14} /> Add Item
+                  </Button>
+                </div>
               </div>
 
               {categoryMeals.length === 0 ? (
-                <p className={styles.mealEmpty}>No food items logged for this meal yet.</p>
+                yesterdayCatMeals.length > 0 ? (
+                  <div className={styles.emptyWithYesterday}>
+                    <p className={styles.mealEmptyText}>Nothing logged yet today for {categoryTitles[cat]}.</p>
+                    <div className={styles.yesterdayPreviewBox}>
+                      <div className={styles.yesterdayPreviewText}>
+                        <span className={styles.yesterdayBadge}>Yesterday</span>
+                        <span>{yesterdayCatMeals.map((m) => m.name).join(' + ')}</span>
+                        <span className={styles.yesterdayKcal}>({yesterdayKcal} kcal &middot; {Math.round(yesterdayProt)}g P)</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => handleRepeatYesterday(cat)}
+                        disabled={repeatingMeal === cat}
+                      >
+                        <RotateCcw size={13} />
+                        <span>{repeatingMeal === cat ? 'Copying...' : `Repeat Yesterday's ${categoryTitles[cat]}`}</span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className={styles.mealEmpty}>No food items logged for this meal yet.</p>
+                )
               ) : (
                 <div className={styles.mealItemsList}>
-                  {categoryMeals.map((meal) => (
-                    <div key={meal.id} className={styles.mealItem}>
-                      <div>
-                        <div className={styles.mealItemName}>{meal.name}</div>
-                        <div className={styles.mealItemMacros}>
-                          <span>P: <strong className={styles.mealItemMacroProtein}>{meal.protein_g}g</strong></span>
-                          <span>C: <strong className={styles.mealItemMacroCarbs}>{meal.carbs_g}g</strong></span>
-                          <span>F: <strong className={styles.mealItemMacroFat}>{meal.fat_g}g</strong></span>
+                  {categoryMeals.map((meal) => {
+                    const itemQty = meal.quantity ?? meal.servings ?? 1;
+                    return (
+                      <div key={meal.id} className={styles.mealItem}>
+                        <div>
+                          <div className={styles.mealItemName}>
+                            {meal.name}
+                            {itemQty !== 1 && (
+                              <span className={styles.mealItemServings}> × {itemQty}</span>
+                            )}
+                          </div>
+                          <div className={styles.mealItemMacros}>
+                            <span>P: <strong className={styles.mealItemMacroProtein}>{meal.protein_g}g</strong></span>
+                            <span>C: <strong className={styles.mealItemMacroCarbs}>{meal.carbs_g}g</strong></span>
+                            <span>F: <strong className={styles.mealItemMacroFat}>{meal.fat_g}g</strong></span>
+                          </div>
+                        </div>
+
+                        <div className={styles.mealItemActions}>
+                          <div className={styles.mealItemCalories}>
+                            {meal.calories} <span className={styles.mealItemCaloriesUnit}>kcal</span>
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.deleteMealBtn}
+                            title="Remove item"
+                            onClick={() => handleDeleteMeal(meal.id)}
+                            disabled={deletingMealId === meal.id}
+                          >
+                            <Trash2 size={15} />
+                          </button>
                         </div>
                       </div>
-
-                      <div className={styles.mealItemCalories}>
-                        {meal.calories} <span className={styles.mealItemCaloriesUnit}>kcal</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Card>
           );
         })}
-      </div>
-
-      {/* Diet Blueprint — reference plan from the user's own nutrition workbook */}
-      <div>
-        <div className={styles.blueprintHeader}>
-          <Sparkles size={20} color="var(--color-primary)" />
-          <h2 className={styles.blueprintTitle}>{duration}-Day {modeLabel} Blueprint</h2>
-        </div>
-        <p className={styles.blueprintIntro}>
-          Two fixed reference meal frameworks from your nutrition plan. Your live computed target today is ~{targetKcal.toLocaleString()} kcal, {targetProtein}g protein — use these as fueling templates and scale carbohydrate portions (rotis, rice, oats) up or down to bridge any gap to that target.
-        </p>
-
-        <Card className={styles.blueprintCard}>
-          <div className={styles.blueprintCardHeader}>
-            <h3 className={styles.blueprintCardTitle}>Option A: High-Volume Training Day Fueling</h3>
-            <Badge variant="emerald">{optionATotal.calories.toLocaleString()} kcal &middot; {optionATotal.protein}g protein</Badge>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead><tr><th className={styles.th}>Meal Window</th><th className={styles.th}>Food &amp; Recipe</th><th className={styles.th}>Portion</th><th className={styles.th}>Kcal</th><th className={styles.th}>P</th><th className={styles.th}>C</th><th className={styles.th}>F</th></tr></thead>
-              <tbody>
-                {optionA.map((row, i) => (
-                  <tr key={i}>
-                    <td className={`${styles.td} ${styles.tdStrong}`}>{row[0]}</td>
-                    <td className={styles.td}>{row[1]}</td>
-                    <td className={`${styles.td} ${styles.tdMuted}`}>{row[2]}</td>
-                    <td className={styles.td}>{row[3]}</td>
-                    <td className={styles.td}>{row[4]}g</td>
-                    <td className={styles.td}>{row[5]}g</td>
-                    <td className={styles.td}>{row[6]}g</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>Reference Total</td>
-                  <td className={styles.td} colSpan={2} />
-                  <td className={`${styles.td} ${styles.tdTotal} ${styles.tdTotalPrimary}`}>{optionATotal.calories.toLocaleString()}</td>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionATotal.protein}g</td>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionATotal.carbs}g</td>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionATotal.fat}g</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card>
-          <div className={styles.blueprintCardHeader}>
-            <h3 className={styles.blueprintCardTitle}>Option B: Lower-Activity &amp; Budget Fueling</h3>
-            <Badge variant="cyan">{optionBTotal.calories.toLocaleString()} kcal &middot; {optionBTotal.protein}g protein</Badge>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead><tr><th className={styles.th}>Meal Window</th><th className={styles.th}>Food &amp; Recipe</th><th className={styles.th}>Portion</th><th className={styles.th}>Kcal</th><th className={styles.th}>P</th><th className={styles.th}>C</th><th className={styles.th}>F</th></tr></thead>
-              <tbody>
-                {optionB.map((row, i) => (
-                  <tr key={i}>
-                    <td className={`${styles.td} ${styles.tdStrong}`}>{row[0]}</td>
-                    <td className={styles.td}>{row[1]}</td>
-                    <td className={`${styles.td} ${styles.tdMuted}`}>{row[2]}</td>
-                    <td className={styles.td}>{row[3]}</td>
-                    <td className={styles.td}>{row[4]}g</td>
-                    <td className={styles.td}>{row[5]}g</td>
-                    <td className={styles.td}>{row[6]}g</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>Reference Total</td>
-                  <td className={styles.td} colSpan={2} />
-                  <td className={`${styles.td} ${styles.tdTotal} ${styles.tdTotalCyan}`}>{optionBTotal.calories.toLocaleString()}</td>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionBTotal.protein}g</td>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionBTotal.carbs}g</td>
-                  <td className={`${styles.td} ${styles.tdTotal}`}>{optionBTotal.fat}g</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      {/* High-protein budget food staples cheat sheet */}
-      <div>
-        <h2 className={styles.sectionTitle}>High-Protein Budget Indian Food Staples</h2>
-        <Card>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead><tr><th className={styles.th}>Food Staple</th><th className={styles.th}>Typical Serving</th><th className={styles.th}>Protein</th><th className={styles.th}>Calories</th><th className={styles.th}>Efficiency Tier &amp; Prep Cue</th></tr></thead>
-              <tbody>
-                {staples.map((row) => (
-                  <tr key={row[0]}>
-                    <td className={`${styles.td} ${styles.tdStrong}`}>{row[0]}</td>
-                    <td className={styles.td}>{row[1]}</td>
-                    <td className={`${styles.td} ${styles.tdProtein}`}>{row[2]}</td>
-                    <td className={styles.td}>{row[3]}</td>
-                    <td className={`${styles.td} ${styles.tdMuted}`}>{row[4]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
       </div>
 
       {/* 2-3 week calorie & metabolic adjustment protocol */}
@@ -424,81 +582,327 @@ export default function NutritionPage() {
         </Card>
       </div>
 
-      {/* Log Food Modal */}
+      {/* Redesigned Log Food Modal */}
       <Modal isOpen={addMealModal} onClose={() => setAddMealModal(false)} title="Log Meal Entry">
         <div className={styles.formGroup}>
+          {/* Meal Category Pill Tabs */}
           <div>
-            <label className={styles.formLabel}>Meal Time</label>
-            <select
-              value={mealType}
-              onChange={(e) => setMealType(e.target.value as any)}
-              className={styles.formSelect}
+            <label className={styles.formLabel}>Meal Category</label>
+            <div className={styles.modalMealTypeTabs}>
+              {mealCategories.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={`${styles.modalMealTypeTab} ${mealType === type ? styles.modalMealTypeTabActive : ''}`}
+                  onClick={() => setMealType(type)}
+                >
+                  {categoryTitles[type]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Replay Banner for Selected Meal Type */}
+          {modalYesterdayMeals.length > 0 && (
+            <div className={styles.modalYesterdayBanner}>
+              <div>
+                <div className={styles.modalYesterdayTitle}>
+                  <RotateCcw size={14} /> Repeat Yesterday&apos;s {categoryTitles[mealType]}
+                </div>
+                <div className={styles.modalYesterdaySubtitle}>
+                  {modalYesterdayMeals.map((m) => m.name).join(' + ')} &middot; <strong>{modalYesterdayKcal} kcal</strong> &middot; {Math.round(modalYesterdayProtein)}g protein
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => handleRepeatYesterday(mealType)}
+                disabled={repeatingMeal === mealType}
+              >
+                {repeatingMeal === mealType ? 'Logging...' : 'Repeat Meal'}
+              </Button>
+            </div>
+          )}
+
+          {/* Primary / Fallback Navigation */}
+          <div className={styles.tabSwitch}>
+            <button
+              type="button"
+              className={`${styles.tabSwitchBtn} ${modalMode === 'recent' ? styles.tabSwitchBtnActive : ''}`}
+              onClick={() => setModalMode('recent')}
             >
-              <option value="BREAKFAST">Breakfast</option>
-              <option value="LUNCH">Lunch</option>
-              <option value="DINNER">Dinner</option>
-              <option value="SNACK">Snack / Pre-Workout</option>
-            </select>
+              <Clock size={15} /> Recent Foods &amp; Search (Primary)
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabSwitchBtn} ${modalMode === 'manual' ? styles.tabSwitchBtnActive : ''}`}
+              onClick={() => setModalMode('manual')}
+            >
+              Enter manually (6 fields)
+            </button>
           </div>
 
-          <div>
-            <label className={styles.formLabel}>Food / Meal Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Grilled Salmon & Sweet Potato"
-              value={foodName}
-              onChange={(e) => setFoodName(e.target.value)}
-              className={styles.formInput}
-            />
-          </div>
+          {modalMode === 'recent' ? (
+            <>
+              {!selectedFood ? (
+                <>
+                  {/* Search input */}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Search foods, oats, eggs, chicken, dahi..."
+                      value={foodQuery}
+                      onChange={(e) => setFoodQuery(e.target.value)}
+                      className={styles.formInput}
+                      autoFocus
+                    />
+                  </div>
 
-          <div className={styles.formGrid2}>
-            <div>
-              <label className={styles.formLabel}>Calories (kcal)</label>
-              <input
-                type="number"
-                value={calories}
-                onChange={(e) => setCalories(parseFloat(e.target.value) || 0)}
-                className={styles.formInput}
-              />
-            </div>
-            <div>
-              <label className={styles.formLabel}>Protein (g)</label>
-              <input
-                type="number"
-                value={protein}
-                onChange={(e) => setProtein(parseFloat(e.target.value) || 0)}
-                className={styles.formInput}
-              />
-            </div>
-          </div>
+                  {/* If user typed a search query, show filtered results */}
+                  {foodQuery.trim() !== '' ? (
+                    <div>
+                      <div className={styles.sectionHeading}>Search Results</div>
+                      <div className={styles.foodResults}>
+                        {foodResults.length === 0 ? (
+                          <p className={styles.mealEmpty}>
+                            No foods match &quot;{foodQuery}&quot;. Switch to manual entry to log it!
+                          </p>
+                        ) : (
+                          foodResults.map((food) => (
+                            <button
+                              key={food.id}
+                              type="button"
+                              className={styles.foodResult}
+                              onClick={() => {
+                                setSelectedFood(food);
+                                setQuantity(1);
+                              }}
+                            >
+                              <span className={styles.foodResultName}>
+                                {food.name}
+                                {food.is_custom && <Badge variant="cyan">Custom</Badge>}
+                              </span>
+                              <span className={styles.foodResultMeta}>
+                                {food.serving_label} · {food.calories} kcal · P {food.protein_g}g
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Default state: Recent foods list */
+                    <div className={styles.recentFoodsSection}>
+                      <div className={styles.sectionHeading}>
+                        {recentFoods.length > 0 ? 'Recently Logged Foods' : 'Suggested Staples'}
+                      </div>
 
-          <div className={styles.formGrid2}>
-            <div>
-              <label className={styles.formLabel}>Carbs (g)</label>
-              <input
-                type="number"
-                value={carbs}
-                onChange={(e) => setCarbs(parseFloat(e.target.value) || 0)}
-                className={styles.formInput}
-              />
-            </div>
-            <div>
-              <label className={styles.formLabel}>Fat (g)</label>
-              <input
-                type="number"
-                value={fat}
-                onChange={(e) => setFat(parseFloat(e.target.value) || 0)}
-                className={styles.formInput}
-              />
-            </div>
-          </div>
+                      {recentFoods.length > 0 ? (
+                        <div className={styles.recentFoodsGrid}>
+                          {recentFoods.map((rf) => (
+                            <button
+                              key={rf.id}
+                              type="button"
+                              className={styles.recentFoodCard}
+                              onClick={() => {
+                                setSelectedFood(rf);
+                                setQuantity(rf.quantity || 1);
+                              }}
+                            >
+                              <div className={styles.recentFoodName}>{rf.name}</div>
+                              <div className={styles.recentFoodPortion}>{rf.serving_label}</div>
+                              <div className={styles.recentFoodMacros}>
+                                <span>{rf.calories} kcal</span>
+                                <span>&middot;</span>
+                                <span>{rf.protein_g}g P</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className={styles.staplesList}>
+                          {foodResults.slice(0, 8).map((food) => (
+                            <button
+                              key={food.id}
+                              type="button"
+                              className={styles.stapleChip}
+                              onClick={() => {
+                                setSelectedFood(food);
+                                setQuantity(1);
+                              }}
+                            >
+                              {food.name} ({food.calories} kcal)
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Selected food configuration card */
+                <div className={styles.selectedFoodBox}>
+                  <div className={styles.selectedFoodTop}>
+                    <div>
+                      <div className={styles.mealItemName}>{selectedFood.name}</div>
+                      <div className={styles.recentFoodPortion}>
+                        1 serving = {selectedFood.serving_label} ({selectedFood.calories} kcal)
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedFood(null)}>
+                      Change Food
+                    </Button>
+                  </div>
+
+                  {/* Quantity & Servings Controls */}
+                  <div className={styles.quantityControl}>
+                    <label className={styles.formLabel}>Quantity / Servings</label>
+                    <div className={styles.quantityStepper}>
+                      <button
+                        type="button"
+                        className={styles.stepperBtn}
+                        onClick={() => setQuantity((q) => Math.max(0.25, Math.round((q - 0.25) * 100) / 100))}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0.25"
+                        step="0.25"
+                        value={quantity}
+                        onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+                        className={styles.stepperInput}
+                      />
+                      <button
+                        type="button"
+                        className={styles.stepperBtn}
+                        onClick={() => setQuantity((q) => Math.round((q + 0.25) * 100) / 100)}
+                      >
+                        +
+                      </button>
+
+                      <div className={styles.quantityChips}>
+                        {[0.5, 1, 1.5, 2].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            className={`${styles.quantityChip} ${quantity === preset ? styles.quantityChipActive : ''}`}
+                            onClick={() => setQuantity(preset)}
+                          >
+                            {preset}x
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scaled Macro Display */}
+                  {(() => {
+                    const scaled = scaleFood(selectedFood, quantity);
+                    return (
+                      <div className={styles.macroSummaryPill}>
+                        <strong>{scaled.calories} kcal</strong>
+                        <span>P: <strong className={styles.mealItemMacroProtein}>{scaled.protein}g</strong></span>
+                        <span>C: <strong className={styles.mealItemMacroCarbs}>{scaled.carbs}g</strong></span>
+                        <span>F: <strong className={styles.mealItemMacroFat}>{scaled.fat}g</strong></span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </>
+          ) : (
+            /* Fallback 6-Field Manual Form */
+            <>
+              <div className={styles.manualNotice}>
+                <strong>Fallback Form:</strong> Use this manual form if the item is not in your recent foods or catalog.
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Food / Meal Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Masala Omelette & Brown Toast"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  className={styles.formInput}
+                />
+              </div>
+
+              <div>
+                <label className={styles.formLabel}>Quantity / Servings</label>
+                <input
+                  type="number"
+                  min="0.25"
+                  step="0.25"
+                  value={manualQuantity}
+                  onChange={(e) => setManualQuantity(parseFloat(e.target.value) || 1)}
+                  className={styles.formInput}
+                />
+              </div>
+
+              <div className={styles.formGrid2}>
+                <div>
+                  <label className={styles.formLabel}>Total Calories (kcal)</label>
+                  <input
+                    type="number"
+                    value={manualCalories}
+                    onChange={(e) => setManualCalories(parseFloat(e.target.value) || 0)}
+                    className={styles.formInput}
+                  />
+                </div>
+                <div>
+                  <label className={styles.formLabel}>Total Protein (g)</label>
+                  <input
+                    type="number"
+                    value={manualProtein}
+                    onChange={(e) => setManualProtein(parseFloat(e.target.value) || 0)}
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGrid2}>
+                <div>
+                  <label className={styles.formLabel}>Total Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={manualCarbs}
+                    onChange={(e) => setManualCarbs(parseFloat(e.target.value) || 0)}
+                    className={styles.formInput}
+                  />
+                </div>
+                <div>
+                  <label className={styles.formLabel}>Total Fat (g)</label>
+                  <input
+                    type="number"
+                    value={manualFat}
+                    onChange={(e) => setManualFat(parseFloat(e.target.value) || 0)}
+                    className={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={saveAsFood}
+                  onChange={(e) => setSaveAsFood(e.target.checked)}
+                />
+                Save to My Foods for quick 1-click logging next time
+              </label>
+            </>
+          )}
 
           <div className={styles.formActions}>
             <Button variant="secondary" onClick={() => setAddMealModal(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleAddMeal} disabled={saving}>
+            <Button
+              variant="primary"
+              onClick={handleAddMeal}
+              disabled={saving || (modalMode === 'recent' && !selectedFood)}
+            >
               {saving ? 'Adding...' : 'Log Food'}
             </Button>
           </div>

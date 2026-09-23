@@ -15,6 +15,7 @@ import {
   BookOpen,
   Target,
   History,
+  ListOrdered,
   Users,
   Building2,
   Dumbbell,
@@ -33,6 +34,7 @@ import { api } from '@/lib/api';
 import { JourneyPacingData } from '@/lib/types';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import styles from './Sidebar.module.css';
 
 interface NavItem {
   label: string;
@@ -89,8 +91,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
     { label: 'Today', href: '/app/workouts/active', icon: PlayCircle, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
     { label: 'Plan', href: '/app/workouts/plan', icon: CalendarDays, badge: planBadge || gatedBadge, badgeVariant: planBadgeVariant || gatedVariant, isGated: true },
     { label: 'Plan History', href: '/app/workouts/plan/history', icon: History, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
+    { label: 'Routines', href: '/app/workouts/routines', icon: ListOrdered },
+    { label: 'Exercise Library', href: '/app/exercises', icon: Dumbbell },
     { label: 'Daily Log', href: '/app/daily', icon: ClipboardList, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
-    { label: 'Progress', href: '/app/progress', icon: TrendingUp, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
     { label: 'Measurements', href: '/app/measurements', icon: Ruler, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
     { label: 'Nutrition', href: '/app/nutrition', icon: Utensils, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
     { label: 'Review', href: '/app/review', icon: Award, badge: gatedBadge, badgeVariant: gatedVariant, isGated: true },
@@ -111,8 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
     if (href === '/app/workouts/plan') {
       return (
         pathname === '/app/workouts/plan' ||
-        (pathname.startsWith('/app/workouts/plan/') && !pathname.startsWith('/app/workouts/plan/history')) ||
-        pathname.startsWith('/app/workouts/routines')
+        (pathname.startsWith('/app/workouts/plan/') && !pathname.startsWith('/app/workouts/plan/history'))
       );
     }
     if (href === '/app/workouts/active') {
@@ -152,34 +154,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
         aria-label="Sidebar Navigation"
       >
         {/* Header: Brand + Edge Collapse Toggle */}
-        <div
-          style={{
-            height: 'var(--header-height, 64px)',
-            boxSizing: 'border-box',
-            padding: isCollapsed ? '0 0.5rem' : '0 1rem 0 1.25rem',
-            borderBottom: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isCollapsed ? 'center' : 'space-between',
-            position: 'relative',
-          }}
-        >
+        <div className={`${styles.header} ${isCollapsed ? styles.headerCollapsed : ''}`}>
           {isCollapsed ? (
             <div
               onClick={onToggleCollapse}
               title="FITLOG PRO (Click to expand)"
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)',
-                cursor: 'pointer',
-                transition: 'transform var(--transition-fast)',
-              }}
+              className={styles.logoCollapsed}
             >
               <Dumbbell size={18} color="#FFFFFF" strokeWidth={2.5} />
             </div>
@@ -188,35 +168,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
               <Link
                 href="/app"
                 onClick={onClose}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.625rem',
-                  fontWeight: 800,
-                  fontSize: '1.2rem',
-                  letterSpacing: '-0.03em',
-                  textDecoration: 'none',
-                  color: 'var(--text-primary)',
-                }}
+                className={styles.brandLink}
               >
-                <div
-                  style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)',
-                  }}
-                >
+                <div className={styles.brandIcon}>
                   <Dumbbell size={18} color="#FFFFFF" strokeWidth={2.5} />
                 </div>
                 <span>
-                  FIT<span style={{ color: 'var(--color-primary)' }}>LOG</span>
+                  FIT<span className={styles.brandHighlight}>LOG</span>
                 </span>
-                <Badge variant="emerald" style={{ fontSize: '0.6rem', padding: '2px 5px', fontWeight: 800 }}>
+                <Badge variant="emerald" size="sm">
                   PRO
                 </Badge>
               </Link>
@@ -249,34 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
         </div>
 
         {/* Navigation Item List */}
-        <nav
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: isCollapsed ? '0.75rem 0.4rem' : '0.75rem 0.875rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.35rem',
-          }}
-        >
-          {/* {isCollapsed ? (
-            <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 8px 8px 8px' }} />
-          ) : (
-            <div
-              style={{
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--text-muted)',
-                padding: '0.5rem 0.5rem 0.35rem 0.5rem',
-              }}
-            >
-              Main Menu
-            </div>
-          )} */}
-
+        <nav className={`${styles.navList} ${isCollapsed ? styles.navListCollapsed : ''}`}>
           {mainNavItems.map((item) => {
             const active = isItemActive(item.href);
             const Icon = item.icon;
@@ -293,54 +226,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
                   }
                 }}
                 title={item.label}
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: isCollapsed ? 'center' : 'flex-start',
-                  gap: isCollapsed ? 0 : '10px',
-                  padding: isCollapsed ? '0.625rem 0' : '0.625rem 0.75rem',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.875rem',
-                  fontWeight: active ? 700 : 500,
-                  color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
-                  background: active ? 'var(--color-primary-glow)' : 'transparent',
-                  border: active ? '1px solid var(--border-glow)' : '1px solid transparent',
-                  boxShadow: active ? '0 2px 8px rgba(16, 185, 129, 0.12)' : 'none',
-                  textDecoration: 'none',
-                  transition: 'all var(--transition-fast)',
-                }}
+                className={`${styles.navItem} ${isCollapsed ? styles.navItemCollapsed : ''} ${active ? styles.navItemActive : ''}`}
               >
                 {/* Active Indicator Bar */}
-                {active && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: '2px',
-                      top: '20%',
-                      bottom: '20%',
-                      width: '3.5px',
-                      borderRadius: '2px',
-                      background: 'var(--color-primary)',
-                    }}
-                  />
-                )}
+                {active && <span className={styles.activeIndicator} />}
 
                 <Icon
                   size={isCollapsed ? 20 : 18}
                   color={active ? 'var(--color-primary)' : 'var(--text-muted)'}
                   strokeWidth={active ? 2.5 : 2}
-                  style={{ flexShrink: 0, marginLeft: !isCollapsed && active ? '4px' : '0' }}
+                  className={`${styles.navItemIcon} ${!isCollapsed && active ? styles.navItemIconActive : ''}`}
                 />
 
                 {!isCollapsed && (
                   <>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className={styles.navItemLabel}>
                       {item.label}
                     </span>
 
                     {item.badge && (
-                      <Badge variant={item.badgeVariant || 'emerald'} style={{ fontSize: '0.625rem', padding: '1px 6px' }}>
+                      <Badge variant={item.badgeVariant || 'emerald'} size="sm">
                         {item.badge}
                       </Badge>
                     )}
@@ -353,18 +258,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
           {managementNavItems.length > 0 && (
             <>
               {isCollapsed ? (
-                <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '8px 8px 4px 8px' }} />
+                <div className={styles.sectionDivider} />
               ) : (
-                <div
-                  style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-muted)',
-                    padding: '1rem 0.5rem 0.35rem 0.5rem',
-                  }}
-                >
+                <div className={styles.sectionHeader}>
                   Management
                 </div>
               )}
@@ -379,53 +275,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
                     href={item.href}
                     onClick={onClose}
                     title={item.label}
-                    style={{
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: isCollapsed ? 'center' : 'flex-start',
-                      gap: isCollapsed ? 0 : '10px',
-                      padding: isCollapsed ? '0.625rem 0' : '0.625rem 0.75rem',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.875rem',
-                      fontWeight: active ? 700 : 500,
-                      color: active ? 'var(--color-primary)' : 'var(--text-secondary)',
-                      background: active ? 'var(--color-primary-glow)' : 'transparent',
-                      border: active ? '1px solid var(--border-glow)' : '1px solid transparent',
-                      boxShadow: active ? '0 2px 8px rgba(16, 185, 129, 0.12)' : 'none',
-                      textDecoration: 'none',
-                      transition: 'all var(--transition-fast)',
-                    }}
+                    className={`${styles.navItem} ${isCollapsed ? styles.navItemCollapsed : ''} ${active ? styles.navItemActive : ''}`}
                   >
-                    {active && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: '2px',
-                          top: '20%',
-                          bottom: '20%',
-                          width: '3.5px',
-                          borderRadius: '2px',
-                          background: 'var(--color-primary)',
-                        }}
-                      />
-                    )}
+                    {active && <span className={styles.activeIndicator} />}
 
                     <Icon
                       size={isCollapsed ? 20 : 18}
                       color={active ? 'var(--color-primary)' : 'var(--text-muted)'}
                       strokeWidth={active ? 2.5 : 2}
-                      style={{ flexShrink: 0, marginLeft: !isCollapsed && active ? '4px' : '0' }}
+                      className={`${styles.navItemIcon} ${!isCollapsed && active ? styles.navItemIconActive : ''}`}
                     />
 
                     {!isCollapsed && (
                       <>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span className={styles.navItemLabel}>
                           {item.label}
                         </span>
 
                         {item.badge && (
-                          <Badge variant={item.badgeVariant || 'emerald'} style={{ fontSize: '0.625rem', padding: '1px 6px' }}>
+                          <Badge variant={item.badgeVariant || 'emerald'} size="sm">
                             {item.badge}
                           </Badge>
                         )}
@@ -439,14 +307,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
         </nav>
 
         {/* Quick Action */}
-        <div
-          style={{
-            padding: isCollapsed ? '0.65rem 0.4rem' : '0.75rem 1rem',
-            borderTop: '1px solid var(--border-subtle)',
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
+        <div className={`${styles.quickActionWrap} ${isCollapsed ? styles.quickActionWrapCollapsed : ''}`}>
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -454,19 +315,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
                 router.push('/app/workouts/active');
               }}
               title="Log Workout"
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                color: '#FFFFFF',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-              }}
+              className={styles.quickActionBtnCollapsed}
               aria-label="Log Workout"
             >
               <Plus size={18} strokeWidth={2.5} />
@@ -475,7 +324,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
             <Button
               size="sm"
               variant="primary"
-              style={{ width: '100%', justifyContent: 'center' }}
+              fullWidth
               onClick={() => {
                 onClose();
                 router.push('/app/workouts/active');
@@ -488,36 +337,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
         </div>
 
         {/* User Profile Footer */}
-        <div
-          style={{
-            padding: isCollapsed ? '0.75rem 0.4rem' : '0.875rem 1rem',
-            borderTop: '1px solid var(--border-subtle)',
-            background: 'var(--bg-surface-elevated)',
-            display: 'flex',
-            flexDirection: isCollapsed ? 'column' : 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: isCollapsed ? '8px' : '8px',
-          }}
-        >
+        <div className={`${styles.userFooter} ${isCollapsed ? styles.userFooterCollapsed : ''}`}>
           {isCollapsed ? (
             <>
               <div
                 title={`${user?.full_name || 'FitLog User'} (${user?.email})`}
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-cyan) 100%)',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  cursor: 'default',
-                  flexShrink: 0,
-                }}
+                className={`${styles.userAvatar} ${styles.userAvatarCollapsed}`}
               >
                 {userInitials}
               </div>
@@ -525,18 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
               <button
                 onClick={handleLogout}
                 title="Log Out"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'color var(--transition-fast)',
-                }}
+                className={`${styles.logoutBtn} ${styles.logoutBtnCollapsed}`}
                 aria-label="Log Out"
               >
                 <LogOut size={16} />
@@ -544,46 +358,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
             </>
           ) : (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-cyan) 100%)',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    flexShrink: 0,
-                  }}
-                >
+              <div className={styles.userMeta}>
+                <div className={styles.userAvatar}>
                   {userInitials}
                 </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: '0.8125rem',
-                      fontWeight: 700,
-                      color: 'var(--text-primary)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                <div className={styles.userTextWrap}>
+                  <div className={styles.userName}>
                     {user?.full_name || 'FitLog User'}
                   </div>
-                  <div
-                    style={{
-                      fontSize: '0.6875rem',
-                      color: 'var(--text-muted)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <div className={styles.userEmail}>
                     {user?.email}
                   </div>
                 </div>
@@ -592,18 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
               <button
                 onClick={handleLogout}
                 title="Log out"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  padding: '6px',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'color var(--transition-fast)',
-                }}
+                className={styles.logoutBtn}
                 aria-label="Log Out"
               >
                 <LogOut size={16} />

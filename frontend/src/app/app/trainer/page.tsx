@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/lib/authContext';
 
+import styles from './trainer.module.css';
+
 export default function TrainerHubPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -117,17 +119,17 @@ export default function TrainerHubPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={styles.container}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className={styles.header}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <div className={styles.headerMeta}>
             <Badge variant="amber">Head Strength Coach Portal</Badge>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>•</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user?.full_name || 'Trainer'}</span>
+            <span className={styles.bullet}>•</span>
+            <span className={styles.roleText}>{user?.full_name || 'Trainer'}</span>
           </div>
-          <h1 style={{ fontSize: '2rem' }}>Trainer Hub & Client Roster</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '4px' }}>
+          <h1 className={styles.title}>Trainer Hub & Client Roster</h1>
+          <p className={styles.subtitle}>
             Manage client programming, review completed training sessions, and deliver tactical feedback.
           </p>
         </div>
@@ -140,45 +142,34 @@ export default function TrainerHubPage() {
 
       {/* Active Clients Grid */}
       <div>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Assigned Athlete Roster</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        <h2 className={styles.sectionTitle}>Assigned Athlete Roster</h2>
+        <div className={styles.clientGrid}>
           {clients.map((c) => (
             <Card key={c.id} hoverable>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <UserCheck size={22} color="var(--color-primary)" />
+              <div className={styles.clientCardHeader}>
+                <div className={styles.clientInfo}>
+                  <div className={styles.avatar}>
+                    <UserCheck size={22} className={styles.avatarIcon} />
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '1.15rem' }}>{c.client_name}</h3>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.client_email}</div>
+                    <h3 className={styles.clientName}>{c.client_name}</h3>
+                    <div className={styles.clientEmail}>{c.client_email}</div>
                   </div>
                 </div>
                 <Badge variant="emerald">Active Client</Badge>
               </div>
 
               {c.notes && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', background: 'var(--bg-surface-elevated)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
+                <p className={styles.clientProgramNotes}>
                   Program: {c.notes}
                 </p>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+              <div className={styles.clientCardFooter}>
                 <button
                   type="button"
                   onClick={() => router.push(`/app/trainer/clients/${c.client_id}`)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    fontSize: '0.8125rem',
-                    color: 'var(--color-cyan)',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
+                  className={styles.inspectLink}
                 >
                   <span>Inspect Progress Logs</span>
                   <ArrowRight size={14} />
@@ -202,25 +193,25 @@ export default function TrainerHubPage() {
 
       {/* Program Assignments & Coach Feedback Log */}
       <div>
-        <h2 style={{ fontSize: '1.35rem', marginBottom: '1rem' }}>Assigned Workouts & Feedback Stream</h2>
+        <h2 className={styles.sectionTitle}>Assigned Workouts & Feedback Stream</h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className={styles.assignmentList}>
           {assignedWorkouts.map((aw) => (
             <Card key={aw.id} hoverable>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className={styles.assignmentHeader}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ fontSize: '1.15rem' }}>{aw.routine_name}</h3>
+                  <div className={styles.assignmentTitleRow}>
+                    <h3 className={styles.assignmentTitle}>{aw.routine_name}</h3>
                     <Badge variant={aw.status === 'COMPLETED' ? 'emerald' : 'amber'}>
                       {aw.status}
                     </Badge>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    Assigned to: <strong style={{ color: 'var(--text-primary)' }}>{aw.client_name}</strong> • Scheduled: {aw.scheduled_date}
+                  <div className={styles.assignmentMeta}>
+                    Assigned to: <strong className={styles.clientHighlight}>{aw.client_name}</strong> • Scheduled: {aw.scheduled_date}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className={styles.assignmentActions}>
                   {aw.status === 'COMPLETED' && (
                     <Button
                       size="sm"
@@ -239,12 +230,12 @@ export default function TrainerHubPage() {
               </div>
 
               {aw.trainer_feedback && (
-                <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '10px 14px', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-amber)', textTransform: 'uppercase' }}>
+                <div className={styles.feedbackBox}>
+                  <div className={styles.feedbackHeader}>
                     Coach {user?.full_name || 'Trainer'} Feedback:
                   </div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)', marginTop: '4px', fontStyle: 'italic' }}>
-                    "{aw.trainer_feedback}"
+                  <p className={styles.feedbackContent}>
+                    &ldquo;{aw.trainer_feedback}&rdquo;
                   </p>
                 </div>
               )}
@@ -255,24 +246,15 @@ export default function TrainerHubPage() {
 
       {/* Assign Routine Modal */}
       <Modal isOpen={assignModalOpen} onClose={() => setAssignModalOpen(false)} title="Assign Routine to Client">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+        <div className={styles.form}>
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>
               Select Client
             </label>
             <select
               value={targetClient}
               onChange={(e) => setTargetClient(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.select}
             >
               {clients.map((c) => (
                 <option key={c.client_id} value={c.client_id}>
@@ -282,23 +264,14 @@ export default function TrainerHubPage() {
             </select>
           </div>
 
-          <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>
               Select Routine Template
             </label>
             <select
               value={selectedRoutine}
               onChange={(e) => setSelectedRoutine(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '8px 12px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
+              className={styles.select}
             >
               {routines.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -308,7 +281,7 @@ export default function TrainerHubPage() {
             </select>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1rem' }}>
+          <div className={styles.modalFooter}>
             <Button variant="secondary" onClick={() => setAssignModalOpen(false)}>
               Cancel
             </Button>
@@ -321,9 +294,9 @@ export default function TrainerHubPage() {
 
       {/* Give Feedback Modal */}
       <Modal isOpen={feedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} title="Trainer Coaching Feedback">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+        <div className={styles.form}>
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>
               Feedback & Technique Notes for Athlete
             </label>
             <textarea
@@ -331,21 +304,11 @@ export default function TrainerHubPage() {
               placeholder="e.g. Great speed on the working sets! Next session let's increase weight by 2.5kg and ensure elbows stay tucked."
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '4px',
-                padding: '10px',
-                background: '#FFFFFF',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                resize: 'none',
-              }}
+              className={styles.textarea}
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <div className={styles.modalFooter}>
             <Button variant="secondary" onClick={() => setFeedbackModalOpen(false)}>
               Cancel
             </Button>

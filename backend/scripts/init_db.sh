@@ -30,3 +30,12 @@ else
 fi
 
 echo "PostgreSQL is ready on localhost:$PORT (database: $DB_NAME, user: $DB_USER)"
+
+# Run Django migrations and seed exercises
+BACKEND_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+if [ -f "$BACKEND_DIR/manage.py" ]; then
+    echo "Running Django migrations..."
+    python "$BACKEND_DIR/manage.py" migrate --run-syncdb 2>/dev/null || true
+    echo "Seeding exercise catalog..."
+    python "$BACKEND_DIR/manage.py" seed_exercises 2>/dev/null || true
+fi

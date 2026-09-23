@@ -92,6 +92,10 @@
   border-radius: var(--radius-md);
 }
 
+.fullWidth {
+  width: 100%;
+}
+
 /* Card */
 .card {
   background: #FFFFFF;
@@ -145,6 +149,18 @@
   animation: modalEnter 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.modal_sm {
+  max-width: 26rem;
+}
+
+.modal_lg {
+  max-width: 44rem;
+}
+
+.modal_xl {
+  max-width: 56rem;
+}
+
 @keyframes modalEnter {
   from {
     opacity: 0;
@@ -187,6 +203,10 @@
   flex-direction: column;
   gap: 0.375rem;
   margin-bottom: 1rem;
+}
+
+.inputGroupFlex {
+  flex: 1;
 }
 
 .label {

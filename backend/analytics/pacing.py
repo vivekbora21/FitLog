@@ -3,6 +3,8 @@ from django.db import models
 from django.utils import timezone
 from progress.models import WeightEntry, PersonalRecord, BodyMeasurement, DailyLog
 from workouts.models import JourneyProgram, ProgramDay, WorkoutSession
+from nutrition.models import NutritionDay
+from nutrition.targets import get_or_create_macro_target
 
 MODE_BASE_WEIGHTS = {
     'CUT': {'velocity': 35, 'adherence': 30, 'strength': 20, 'recovery': 15},
@@ -33,8 +35,13 @@ def resolve_start_weight(user, override_kg=None, start_date=None, all_weights=No
     explicit override -> nearest weigh-in on/before start_date (else earliest,
     or latest if no start_date is given) -> profile weight -> hardcoded default.
     """
-    if override_kg is not None and override_kg > 0:
-        return float(override_kg)
+    if override_kg is not None and str(override_kg).strip() != '':
+        try:
+            val = float(override_kg)
+            if val > 0:
+                return round(val, 2)
+        except (ValueError, TypeError):
+            pass
 
     if all_weights is None:
         all_weights = list(WeightEntry.objects.filter(user=user).order_by('date'))
@@ -57,13 +64,25 @@ def resolve_target_weekly_rate(mode, start_weight_kg=None, target_weight_kg=None
     explicit rate -> derived from start/target weight over the journey duration
     -> mode's default rate.
     """
-    if explicit_rate_kg is not None:
-        return float(explicit_rate_kg)
+    if explicit_rate_kg is not None and str(explicit_rate_kg).strip() != '':
+        try:
+            return float(explicit_rate_kg)
+        except (ValueError, TypeError):
+            pass
 
     if start_weight_kg is not None and target_weight_kg is not None and duration_days:
         return round((target_weight_kg - start_weight_kg) / (duration_days / 7.0), 2)
 
     return DEFAULT_WEEKLY_RATES.get(mode, DEFAULT_WEEKLY_RATES['CUT'])
+
+
+def resolve_target_weight(start_weight_kg, target_weekly_rate_kg, duration_days):
+    """
+    Derives the projected final target weight from the start weight, weekly rate, and duration.
+    """
+    if start_weight_kg is None or target_weekly_rate_kg is None or not duration_days:
+        return start_weight_kg
+    return round(start_weight_kg + (target_weekly_rate_kg * (duration_days / 7.0)), 1)
 
 
 def calculate_rolling_average(weight_values, window=7):
@@ -105,6 +124,8 @@ def calculate_journey_pacing(user, program=None):
             'starting_waist': None,
             'current_waist': None,
             'target_weight': None,
+            'start_weight_kg': None,
+            'target_weight_kg': None,
             'expected_weight_change': None,
             'weekly_workouts_target': 5,
         }
@@ -425,6 +446,28 @@ def calculate_journey_pacing(user, program=None):
     else:
         overall_status = 'OFF_TRACK'
 
+    # 5. Macro Target & Nutrition Context
+    macro_target = get_or_create_macro_target(user)
+    target_calories = macro_target.daily_calories if macro_target else None
+    target_protein = macro_target.protein_g if macro_target else None
+    target_carbs = macro_target.carbs_g if macro_target else None
+    target_fat = macro_target.fat_g if macro_target else None
+
+    nutrition_start = max(start_date, today - timedelta(days=6))
+    recent_nutrition = list(
+        NutritionDay.objects.filter(user=user, date__gte=nutrition_start, date__lte=today)
+        .prefetch_related('meals')
+    )
+    logged_nutrition = [nd for nd in recent_nutrition if nd.total_calories() > 0]
+    avg_intake_calories = (
+        round(sum(nd.total_calories() for nd in logged_nutrition) / len(logged_nutrition))
+        if logged_nutrition else None
+    )
+    avg_intake_protein = (
+        round(sum(nd.total_protein() for nd in logged_nutrition) / len(logged_nutrition), 1)
+        if logged_nutrition else None
+    )
+
     copilot_insight = _generate_copilot_insight(
         mode=mode,
         status=overall_status,
@@ -444,6 +487,10 @@ def calculate_journey_pacing(user, program=None):
         avg_sleep=avg_sleep,
         avg_steps=avg_steps,
         fatigue_debt_detected=fatigue_debt_detected,
+        target_calories=target_calories,
+        target_protein=target_protein,
+        avg_intake_calories=avg_intake_calories,
+        avg_intake_protein=avg_intake_protein,
     )
 
     trajectory_curve = []
@@ -500,6 +547,8 @@ def calculate_journey_pacing(user, program=None):
         'starting_waist': starting_waist,
         'current_waist': current_waist,
         'target_weight': target_weight,
+        'start_weight_kg': program.start_weight_kg if (program and program.start_weight_kg) else start_weight,
+        'target_weight_kg': program.target_weight_kg if (program and program.target_weight_kg) else target_weight,
         'expected_weight_change': expected_weight_change,
         'weekly_workouts_target': weekly_workouts_target,
         'velocity': {
@@ -539,6 +588,14 @@ def calculate_journey_pacing(user, program=None):
             'avg_energy': avg_energy,
             'fatigue_debt_detected': fatigue_debt_detected,
         },
+        'nutrition': {
+            'target_calories': target_calories,
+            'target_protein_g': target_protein,
+            'target_carbs_g': target_carbs,
+            'target_fat_g': target_fat,
+            'avg_logged_calories': avg_intake_calories,
+            'avg_logged_protein_g': avg_intake_protein,
+        },
         'trajectory_curve': trajectory_curve,
     }
 
@@ -547,71 +604,178 @@ def _generate_copilot_insight(
     mode, status, score, is_calibrating, velocity_status, adherence_status,
     strength_status, actual_weekly_rate, target_weekly_rate, adherence_pct,
     current_day, duration_days, rolling_7_avg, target_weight_today,
-    recovery_status='OPTIMAL', avg_sleep=None, avg_steps=None, fatigue_debt_detected=False
+    recovery_status='OPTIMAL', avg_sleep=None, avg_steps=None, fatigue_debt_detected=False,
+    target_calories=None, target_protein=None, avg_intake_calories=None, avg_intake_protein=None
 ):
-    # RULE 5: Deload & Fatigue Management Protocol (High priority alert)
+    target_cal_str = f"{target_calories:,} kcal" if target_calories else None
+    target_prot_str = f"{target_protein}g protein" if target_protein else None
 
+    # RULE 5: Deload & Fatigue Management Protocol (High priority alert)
     if fatigue_debt_detected or (strength_status in ('NEUTRAL', 'LAGGING') and avg_sleep is not None and avg_sleep < 7.0):
         sleep_str = f"averaging {avg_sleep}h sleep" if avg_sleep else "sleep deficit detected"
+        if target_cal_str and target_prot_str:
+            nutrition_context = f"Ensure you are hitting your baseline {target_cal_str} and {target_prot_str}"
+        elif target_cal_str:
+            nutrition_context = f"Ensure you are hitting your baseline {target_cal_str}"
+        else:
+            nutrition_context = "Assess sleep, calories,"
         return (
             f"Rule 5 alert: Declining or stalled strength under {sleep_str}. "
-            "Do not increase training volume. Assess sleep, calories, and fatigue debt before pushing progressive overload."
+            f"Do not increase training volume. {nutrition_context} and resolve fatigue debt before pushing progressive overload."
         )
 
     if is_calibrating:
+        if target_cal_str and target_prot_str:
+            prot_plan = f"Lock in your {target_prot_str} target ({target_cal_str}/day)"
+        elif target_prot_str:
+            prot_plan = f"Keep daily protein at {target_prot_str}"
+        else:
+            prot_plan = "Keep daily protein high"
         return (
             f"You are on Day {current_day} of {duration_days}. Weight baseline is currently calibrating. "
-            "Keep daily protein high, protect 7.5–8.5h sleep nightly, and log morning weight to establish your trend curve."
+            f"{prot_plan}, protect 7.5–8.5h sleep nightly, and log morning weight to establish your trend curve."
         )
-
 
     # RULE 4: Rapid weight drop + recovery compromise
     if velocity_status == 'TOO_FAST' and actual_weekly_rate and actual_weekly_rate < -0.8 and (recovery_status in ('FATIGUE_RISK', 'CRITICAL') or (avg_sleep and avg_sleep < 7.0)):
+        drop_rate = abs(actual_weekly_rate)
+        if avg_intake_calories and target_calories and avg_intake_calories < (target_calories - 50):
+            intake_gap = target_calories - avg_intake_calories
+            cal_msg = (
+                f"You are averaging {avg_intake_calories:,} kcal/day vs your {target_cal_str} target ({intake_gap:,} kcal gap). "
+                f"Restore full intake to your {target_cal_str} baseline"
+            )
+        elif target_calories:
+            excess_kg = max(0.2, drop_rate - 0.5)
+            velocity_gap_kcal = max(100, min(350, round((excess_kg * 1100) / 25) * 25))
+            new_target = target_calories + velocity_gap_kcal
+            cal_msg = f"Increase your daily target from {target_cal_str} to ~{new_target:,} kcal (+{velocity_gap_kcal} kcal)"
+        else:
+            cal_msg = "Increase calories slightly (+100–150 kcal)"
+
         return (
-            f"Rule 4 alert: Weight dropping very quickly ({abs(actual_weekly_rate):.2f} kg/wk) and recovery is strained. "
-            "Increase calories slightly (+100–150 kcal) and reduce cardio duration to protect lean tissue."
+            f"Rule 4 alert: Weight dropping very quickly ({drop_rate:.2f} kg/wk) and recovery is strained. "
+            f"{cal_msg} and reduce cardio duration to protect lean tissue."
         )
 
     if mode == 'CUT':
         if velocity_status == 'TOO_FAST':
+            actual_rate = abs(actual_weekly_rate or 0)
+            target_rate = abs(target_weekly_rate or 0.5)
+            rate_delta = max(0.1, actual_rate - target_rate)
+            velocity_gap_kcal = max(100, min(450, round((rate_delta * 1100) / 25) * 25))
+
+            if avg_intake_calories and target_calories and avg_intake_calories < (target_calories - 75):
+                intake_gap = target_calories - avg_intake_calories
+                prot_ref = f" (protecting {target_prot_str})" if target_prot_str else ""
+                return (
+                    f"Weight is dropping at {actual_rate:.2f} kg/wk (target: {target_weekly_rate} kg/wk). "
+                    f"You are averaging {avg_intake_calories:,} kcal/day vs your {target_cal_str} target ({intake_gap:,} kcal deficit gap). "
+                    f"Bring intake back up to your prescribed {target_cal_str} target{prot_ref} to protect muscle, or reduce cardio duration by 10 mins."
+                )
+            elif target_calories:
+                new_target = target_calories + velocity_gap_kcal
+                prot_ref = f", keeping protein at {target_prot_str}" if target_prot_str else ""
+                return (
+                    f"Weight is dropping at {actual_rate:.2f} kg/wk (target: {target_weekly_rate} kg/wk). This pace risks muscle loss. "
+                    f"Your velocity gap calls for ~+{velocity_gap_kcal} kcal/day: increase your target from {target_cal_str} to ~{new_target:,} kcal/day{prot_ref}, "
+                    "or reduce high-intensity cardio duration by 10 mins."
+                )
             return (
-                f"Weight is dropping at {abs(actual_weekly_rate or 0):.2f} kg/wk (target: {target_weekly_rate} kg/wk). "
-                "This pace risks muscle loss. Add 150–200 kcal or reduce high-intensity cardio duration by 10 mins."
+                f"Weight is dropping at {actual_rate:.2f} kg/wk (target: {target_weekly_rate} kg/wk). "
+                f"This pace risks muscle loss. Add ~{velocity_gap_kcal} kcal/day or reduce high-intensity cardio duration by 10 mins."
             )
+
         if velocity_status == 'STALLED':
             if avg_steps is not None and avg_steps < 7500:
+                neat_cut = f"before cutting below your {target_cal_str} baseline." if target_cal_str else "before cutting dietary calories."
                 return (
                     f"Rule 3 guidance: Weight loss has stalled with lower daily steps ({avg_steps:,}/day). "
-                    "Increase daily steps by 1,500–2,000 to reach the 8,000–10,000 NEAT target before cutting dietary calories."
+                    f"Increase daily steps by 1,500–2,000 to reach the 8,000–10,000 NEAT target {neat_cut}"
+                )
+            if avg_intake_calories and target_calories and avg_intake_calories > (target_calories + 75):
+                excess = avg_intake_calories - target_calories
+                return (
+                    f"Weight loss has stalled: you are averaging {avg_intake_calories:,} kcal/day ({excess:,} kcal above your {target_cal_str} target). "
+                    f"Dial intake down to your prescribed {target_cal_str} target to reopen your caloric deficit."
+                )
+            if target_calories:
+                suggested_cut = max(100, min(250, round((target_calories * 0.08) / 25) * 25))
+                new_target = target_calories - suggested_cut
+                prot_ref = f" while preserving {target_prot_str}" if target_prot_str else ""
+                return (
+                    f"Weight loss has stalled over recent weigh-ins. Verify tracking accuracy on cooking oils and snacks. "
+                    f"If stalled for 14+ days, adjust your target from {target_cal_str} down to ~{new_target:,} kcal/day (-{suggested_cut} kcal){prot_ref}."
                 )
             return (
                 "Weight loss has stalled over recent weigh-ins. Verify tracking accuracy on cooking oils and snacks, "
                 "or increase daily steps by 1,500 to restore your caloric deficit."
             )
+
         if adherence_status in ('LAGGING', 'CRITICAL'):
             return (
                 f"Workout attendance is at {adherence_pct}%. Missing resistance sessions compromises muscle preservation. "
                 "Prioritize your compound anchor lifts this week."
             )
+
+        if target_cal_str and target_prot_str:
+            nutrition_confirm = f"Locked in at {target_cal_str} and {target_prot_str}."
+        elif target_cal_str:
+            nutrition_confirm = f"Locked in at {target_cal_str}."
+        else:
+            nutrition_confirm = "Strength is preserved and cardio adherence is locked in."
+
         return (
             f"Excellent execution! You are on target at {rolling_7_avg} kg (target {target_weight_today} kg). "
-            "Strength is preserved and cardio adherence is locked in. Stay the course."
+            f"{nutrition_confirm} Stay the course."
         )
-
 
     elif mode == 'BULK':
         if velocity_status == 'TOO_FAST':
+            actual_rate = actual_weekly_rate or 0
+            target_rate = target_weekly_rate or 0.3
+            rate_delta = max(0.1, actual_rate - target_rate)
+            velocity_gap_kcal = max(100, min(400, round((rate_delta * 1100) / 25) * 25))
+
+            if avg_intake_calories and target_calories and avg_intake_calories > (target_calories + 75):
+                excess = avg_intake_calories - target_calories
+                return (
+                    f"Weight is advancing at +{actual_rate:.2f} kg/wk. You are averaging {avg_intake_calories:,} kcal/day (+{excess:,} kcal above your {target_cal_str} target). "
+                    f"Trim intake back to your {target_cal_str} target to keep gains lean and minimize fat accrual."
+                )
+            elif target_calories:
+                new_target = max(1500, target_calories - velocity_gap_kcal)
+                return (
+                    f"Weight is advancing at +{actual_rate:.2f} kg/wk (target: +{target_rate:.2f} kg/wk). This exceeds optimal muscle protein synthesis rates. "
+                    f"Trim your daily target from {target_cal_str} to ~{new_target:,} kcal (-{velocity_gap_kcal} kcal) to keep gains lean."
+                )
             return (
-                f"Weight is advancing at +{actual_weekly_rate or 0:.2f} kg/wk. This exceeds optimal muscle protein synthesis rates. "
-                "Trim 200 kcal to keep gains lean and minimize fat accrual."
+                f"Weight is advancing at +{actual_rate:.2f} kg/wk. This exceeds optimal muscle protein synthesis rates. "
+                f"Trim ~{velocity_gap_kcal} kcal to keep gains lean and minimize fat accrual."
             )
-        if velocity_status == 'LOSING_WEIGHT':
+
+        if velocity_status in ('LOSING_WEIGHT', 'STALLED'):
+            rate_str = f" ({actual_weekly_rate:.2f} kg/wk)" if actual_weekly_rate is not None else ""
+            if avg_intake_calories and target_calories and avg_intake_calories < (target_calories - 75):
+                intake_gap = target_calories - avg_intake_calories
+                return (
+                    f"Weight is drifting downward{rate_str}. You are averaging {avg_intake_calories:,} kcal against your {target_cal_str} surplus target ({intake_gap:,} kcal deficit gap). "
+                    f"Ensure you hit your full {target_cal_str} target with dense additions (e.g. oats or peanut butter smoothie) on training days."
+                )
+            elif target_calories:
+                new_target = target_calories + 250
+                return (
+                    f"Weight is drifting downward{rate_str}. You need a deeper surplus: bump your target from {target_cal_str} to ~{new_target:,} kcal/day (+250 kcal) "
+                    "with dense additions (oats, peanut butter, or banana smoothie)."
+                )
             return (
                 "Weight is drifting downward instead of upward. You need a surplus: add a dense 300 kcal snack "
                 "(oats, peanut butter, or banana smoothie) on training days."
             )
+
+        target_context = f" at your {target_cal_str} target ({target_prot_str})" if (target_cal_str and target_prot_str) else ""
         return (
-            "Hypertrophy pacing is locked in. Progressive overload confirmed on compound lifts with clean weight velocity."
+            f"Hypertrophy pacing is locked in{target_context}. Progressive overload confirmed on compound lifts with clean weight velocity."
         )
 
     elif mode == 'FOCUS':
@@ -620,15 +784,37 @@ def _generate_copilot_insight(
                 f"Strength peaking requires neural consistency. Attendance is at {adherence_pct}%. "
                 "Do not skip the scheduled heavy anchor sessions."
             )
+        cal_str = f"maintain your {target_cal_str} baseline ({target_prot_str})" if (target_cal_str and target_prot_str) else "maintain caloric maintenance"
         return (
-            "PR Index is tracking strong. Ensure 3–4 minutes rest on primary compound sets and maintain caloric maintenance."
+            f"PR Index is tracking strong. Ensure 3–4 minutes rest on primary compound sets and {cal_str}."
+        )
+
+    elif mode == 'RECOMP':
+        if velocity_status == 'TOO_FAST' and actual_weekly_rate and actual_weekly_rate < -0.4:
+            rate_delta = abs(actual_weekly_rate) - 0.15
+            velocity_gap_kcal = max(100, min(350, round((rate_delta * 1100) / 25) * 25))
+            if target_calories:
+                new_target = target_calories + velocity_gap_kcal
+                return (
+                    f"Recomp velocity is dropping too fast ({abs(actual_weekly_rate):.2f} kg/wk). "
+                    f"Add ~{velocity_gap_kcal} kcal/day (bringing target from {target_cal_str} to ~{new_target:,} kcal) to preserve lean mass."
+                )
+        if target_cal_str and target_prot_str:
+            return (
+                f"Body recomposition on track. Maintain your {target_cal_str} target and lock in {target_prot_str} daily "
+                "to fuel muscle protein synthesis while in a mild deficit."
+            )
+        return (
+            "Body recomposition on track. Protect daily protein and maintain steady resistance volume."
         )
 
     elif mode == 'HABIT':
+        habit_target = f" and logging nutrition toward your {target_cal_str} target" if target_cal_str else ""
         return (
-            f"Consistency streak at {adherence_pct}%. Focus strictly on showing up and finishing the prescribed 35-minute sessions."
+            f"Consistency streak at {adherence_pct}%. Focus strictly on showing up for workouts{habit_target}."
         )
 
+    target_summary = f" Continue tracking toward your {target_cal_str} and {target_prot_str} targets." if (target_cal_str and target_prot_str) else " Continue tracking your daily nutrition and training volume."
     return (
-        f"Pacing score is {score}% ({status.replace('_', ' ')}). Continue tracking your daily nutrition and training volume."
+        f"Pacing score is {score}% ({status.replace('_', ' ')}).{target_summary}"
     )

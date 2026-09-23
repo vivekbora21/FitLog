@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PlanSelectorModal } from '@/components/PlanSelectorModal';
+import { WeeklyHealthStrip } from '@/components/WeeklyHealthStrip';
 import { Button } from '@/components/ui/Button';
 import styles from './review.module.css';
 
@@ -81,6 +82,15 @@ function toneFor(status?: string | null): Tone {
   return STATUS_TONE[status] || 'neutral';
 }
 
+// Rules 1–2 mean "keep going"; Rules 3–5 ask for an adjustment.
+const RULE_TONE: Record<string, Tone> = {
+  'Rule 1': 'good',
+  'Rule 1 / 2': 'good',
+  'Rule 3': 'warn',
+  'Rule 4': 'warn',
+  'Rule 5': 'bad',
+};
+
 function labelFor(status?: string | null): string {
   if (!status) return 'Pending';
   return status.replace(/_/g, ' ');
@@ -148,10 +158,6 @@ export default function ReviewPage() {
           ['7-day avg weight', j.seven_day_average ? `${j.seven_day_average} kg` : '—'],
           ['Weekly weight change', j.weekly_weight_change == null ? '—' : `${j.weekly_weight_change} kg`],
           ['Current waist', j.current_waist ? `${j.current_waist} cm` : '—'],
-          ['Avg daily steps', pacing?.recovery?.avg_daily_steps ? `${pacing.recovery.avg_daily_steps.toLocaleString()} / day` : '—'],
-          ['Avg nightly sleep', pacing?.recovery?.avg_sleep_hours ? `${pacing.recovery.avg_sleep_hours}h / night` : '—'],
-          ['Cardio', `${j.cardio_minutes || 0} / ${j.cardio_target || 120} min`],
-          ['Workouts', `${s?.workouts_this_week || 0} / ${weeklyWorkoutsTarget}`],
         ].map(([l, v]) => (
           <div key={l} className={styles.statCard}>
             <small className={styles.statLabel}>{l}</small>
@@ -159,6 +165,8 @@ export default function ReviewPage() {
           </div>
         ))}
       </section>
+
+      <WeeklyHealthStrip health={s?.weekly_health} title="This week" />
 
       <section className={styles.insightBox}>
         <small className={styles.insightLabel}>{pacingLabel.toUpperCase()}</small>
@@ -227,13 +235,14 @@ export default function ReviewPage() {
                   <th>Strength</th>
                   <th>Energy &amp; Recovery Notes</th>
                   <th>Automated Recommendation</th>
+                  <th>Rule Triggered</th>
                 </tr>
               </thead>
               <tbody>
                 {s.weekly_review.map((row: any) => {
                   const isCurrent = row.is_current || row.week_index === currentWeekIndex;
                   const hasWeight = row.avg_weight != null;
-                  const isRule = row.action_recommendation?.startsWith('Rule');
+                  const isRule = row.rule_triggered?.startsWith('Rule');
                   const isAwaiting = row.action_recommendation?.startsWith('Awaiting');
                   return (
                     <tr key={row.week} className={isCurrent ? styles.reviewRowCurrent : ''}>
@@ -318,13 +327,25 @@ export default function ReviewPage() {
                         )}
                       </td>
                       <td>
-                        <span className={styles.deltaSub}>{row.strength_trend}</span>
+                        <span className={`${styles.deltaSub} ${row.strength_trend === 'Declining' ? styles.deltaAmber : ''}`}>
+                          {row.strength_trend}
+                        </span>
                       </td>
                       <td className={styles.notesCell}>{row.energy_notes}</td>
                       <td className={styles.actionCell}>
                         <span className={isRule ? styles.actionRule : isAwaiting ? styles.actionWait : ''}>
                           {row.action_recommendation}
                         </span>
+                        {row.personal_note && <span className={styles.personalNote}>{row.personal_note}</span>}
+                      </td>
+                      <td>
+                        {row.rule_triggered && row.rule_triggered !== '—' ? (
+                          <span className={`${styles.pillarBadge} ${TONE_CLASS[RULE_TONE[row.rule_triggered] || 'neutral']}`}>
+                            {row.rule_triggered}
+                          </span>
+                        ) : (
+                          <span className={styles.deltaMuted}>—</span>
+                        )}
                       </td>
                     </tr>
                   );

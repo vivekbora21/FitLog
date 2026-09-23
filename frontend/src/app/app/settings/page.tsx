@@ -17,6 +17,20 @@ const FITNESS_GOALS = [
   { value: 'GENERAL_FITNESS', label: 'General Health & Fitness' },
 ];
 
+const SEX_OPTIONS = [
+  { value: '', label: 'Select…' },
+  { value: 'MALE', label: 'Male' },
+  { value: 'FEMALE', label: 'Female' },
+];
+
+const ACTIVITY_LEVELS = [
+  { value: 'SEDENTARY', label: 'Sedentary (desk job, little exercise)' },
+  { value: 'LIGHT', label: 'Light (1–3 sessions / week)' },
+  { value: 'MODERATE', label: 'Moderate (3–5 sessions / week)' },
+  { value: 'HIGH', label: 'High (6–7 sessions / week)' },
+  { value: 'ATHLETE', label: 'Athlete (twice-daily or physical job)' },
+];
+
 const UNIT_PREFERENCES = [
   { value: 'METRIC', label: 'Metric (kg / cm)' },
   { value: 'IMPERIAL', label: 'Imperial (lbs / inches)' },
@@ -41,6 +55,8 @@ export default function SettingsPage() {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [weightKg, setWeightKg] = useState('');
+  const [sex, setSex] = useState('');
+  const [activityLevel, setActivityLevel] = useState('MODERATE');
   const [fitnessGoal, setFitnessGoal] = useState('HYPERTROPHY');
   const [unitPreference, setUnitPreference] = useState('METRIC');
 
@@ -64,6 +80,8 @@ export default function SettingsPage() {
     setDateOfBirth(user.profile?.date_of_birth || '');
     setHeightCm(user.profile?.height_cm != null ? String(user.profile.height_cm) : '');
     setWeightKg(user.profile?.weight_kg != null ? String(user.profile.weight_kg) : '');
+    setSex(user.profile?.sex || '');
+    setActivityLevel(user.profile?.activity_level || 'MODERATE');
     setFitnessGoal(user.profile?.fitness_goal || 'HYPERTROPHY');
     setUnitPreference(user.profile?.unit_preference || 'METRIC');
   }, [user]);
@@ -90,6 +108,8 @@ export default function SettingsPage() {
           date_of_birth: dateOfBirth || null,
           height_cm: heightCm ? parseFloat(heightCm) : null,
           weight_kg: weightKg ? parseFloat(weightKg) : null,
+          sex,
+          activity_level: activityLevel,
           fitness_goal: fitnessGoal,
           unit_preference: unitPreference,
         },
@@ -165,7 +185,7 @@ export default function SettingsPage() {
               <div className={styles.avatarPreview}>
                 {avatarUrl ? <img src={avatarUrl} alt="Avatar preview" /> : userInitials}
               </div>
-              <div style={{ flex: 1 }} className={uiStyles.inputGroup}>
+              <div className={`${uiStyles.inputGroup} ${uiStyles.inputGroupFlex}`}>
                 <label className={uiStyles.label} htmlFor="avatarUrl">Avatar URL</label>
                 <input
                   id="avatarUrl"
@@ -284,6 +304,25 @@ export default function SettingsPage() {
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
                 />
+              </div>
+            </div>
+
+            <div className={styles.fieldRow}>
+              <div className={uiStyles.inputGroup}>
+                <label className={uiStyles.label} htmlFor="sex">Sex (for BMR)</label>
+                <select id="sex" className={uiStyles.select} value={sex} onChange={(e) => setSex(e.target.value)}>
+                  {SEX_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={uiStyles.inputGroup}>
+                <label className={uiStyles.label} htmlFor="activityLevel">Activity Level</label>
+                <select id="activityLevel" className={uiStyles.select} value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)}>
+                  {ACTIVITY_LEVELS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

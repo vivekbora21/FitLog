@@ -356,3 +356,55 @@
   line-height: 1.45;
   font-weight: 500;
 }
+
+.statusPillInactive {
+  background: rgba(217, 119, 6, 0.12);
+  color: #B45309;
+}
+
+.scoreNumOnTrack {
+  color: var(--color-primary);
+}
+
+.scoreNumAlert {
+  color: var(--color-amber);
+}
+
+.scoreNumOffTrack {
+  color: var(--color-rose);
+}
+
+.badgeSky {
+  background: rgba(2, 132, 199, 0.15);
+  color: #0284C7;
+}
+
+.badgeEmerald {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.badgeAmber {
+  background: rgba(217, 119, 6, 0.15);
+  color: #D97706;
+}
+
+.badgeSlate {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-secondary);
+}
+
+.targetSubtext {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+  font-weight: 500;
+}
+
+.barEmerald {
+  background: var(--color-primary);
+}
+
+.barAmber {
+  background: var(--color-amber);
+}

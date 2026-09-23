@@ -5,7 +5,7 @@ from .models import User, UserProfile
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ['id', 'date_of_birth', 'height_cm', 'weight_kg', 'fitness_goal', 'unit_preference', 'bio']
+        fields = ['id', 'date_of_birth', 'height_cm', 'weight_kg', 'sex', 'activity_level', 'fitness_goal', 'unit_preference', 'bio']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)

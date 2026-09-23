@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.db import transaction
+from datetime import timedelta
 from django.utils import timezone
+from .progression import progression_for
 from .models import Routine, RoutineExercise, AssignedWorkout, WorkoutSession, WorkoutExercise, WorkoutSet, ProgramDay, CardioEntry, JourneyProgram
 from exercises.models import Exercise
 from exercises.serializers import ExerciseSerializer
@@ -45,6 +47,14 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         exercises_data = validated_data.pop('exercises', [])
         user = self.context['request'].user
+        # The session is being saved because it finished, so completed_at is never left
+        # empty: trust the client's clock when sent, else derive it from the duration.
+        if not validated_data.get('completed_at'):
+            duration = validated_data.get('duration_seconds') or 0
+            started_at = validated_data.get('started_at')
+            validated_data['completed_at'] = (
+                started_at + timedelta(seconds=duration) if started_at and duration else timezone.now()
+            )
         session = WorkoutSession.objects.create(user=user, **validated_data)
 
         for ex_data in exercises_data:
@@ -127,10 +137,20 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
 class RoutineExerciseSerializer(serializers.ModelSerializer):
     exercise_name = serializers.CharField(source='exercise.name', read_only=True)
     primary_muscle = serializers.CharField(source='exercise.primary_muscle.name', read_only=True)
+    progression = serializers.SerializerMethodField()
 
     class Meta:
         model = RoutineExercise
-        fields = ['id', 'exercise', 'exercise_name', 'primary_muscle', 'order', 'target_sets', 'target_reps', 'rest_seconds', 'target_rpe', 'suggested_weight_kg', 'focus', 'notes']
+        fields = ['id', 'exercise', 'exercise_name', 'primary_muscle', 'order', 'target_sets', 'target_reps', 'rest_seconds', 'target_rpe', 'suggested_weight_kg', 'focus', 'notes', 'progression']
+
+    def get_progression(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        # Nested serializers share the root context, so one plan response looks up
+        # each exercise's history once no matter how many days repeat it.
+        cache = self.context.setdefault('_progression_history', {})
+        return progression_for(request.user, obj, cache)
 
 class RoutineSerializer(serializers.ModelSerializer):
     exercises = RoutineExerciseSerializer(many=True, required=False)

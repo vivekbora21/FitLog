@@ -33,7 +33,7 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
       <div className={`${styles.card} ${styles.cardAlert}`}>
         <div className={styles.headerRow}>
           <div>
-            <div className={styles.statusPill} style={{ background: 'rgba(217, 119, 6, 0.12)', color: '#B45309' }}>
+            <div className={`${styles.statusPill} ${styles.statusPillInactive}`}>
               <Info size={14} /> NO ACTIVE PLAN
             </div>
             <h2 className={styles.planTitle}>Ready to begin a focused journey?</h2>
@@ -113,7 +113,13 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
 
         <div className={styles.rightActions}>
           <div className={styles.scoreBox}>
-            <div className={styles.scoreNum} style={{ color: status === 'ON_TRACK' ? 'var(--color-primary)' : status === 'PACING_ALERT' ? 'var(--color-amber)' : 'var(--color-rose)' }}>
+            <div className={`${styles.scoreNum} ${
+              status === 'ON_TRACK'
+                ? styles.scoreNumOnTrack
+                : status === 'PACING_ALERT'
+                ? styles.scoreNumAlert
+                : styles.scoreNumOffTrack
+            }`}>
               {pacing.pacing_score}%
             </div>
             <div className={styles.scoreLabel}>Path Score</div>
@@ -136,11 +142,13 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
               <Scale size={14} /> Weight Velocity
             </span>
             <span
-              className={styles.pillarBadge}
-              style={{
-                background: isCalibrating ? 'rgba(2, 132, 199, 0.15)' : vel?.status === 'ON_TRACK' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(217, 119, 6, 0.15)',
-                color: isCalibrating ? '#0284C7' : vel?.status === 'ON_TRACK' ? '#059669' : '#D97706',
-              }}
+              className={`${styles.pillarBadge} ${
+                isCalibrating
+                  ? styles.badgeSky
+                  : vel?.status === 'ON_TRACK'
+                  ? styles.badgeEmerald
+                  : styles.badgeAmber
+              }`}
             >
               {isCalibrating ? 'Calibrating' : (vel?.status?.replace('_', ' ') || 'On Track')}
             </span>
@@ -149,7 +157,7 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
           <div className={styles.pillarValue}>
             {vel?.rolling_7_avg ? `${vel.rolling_7_avg} kg` : '--'}
             {vel?.target_today && !isCalibrating && (
-              <small style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 6, fontWeight: 500 }}>
+              <small className={styles.targetSubtext}>
                 (Target: {vel.target_today}kg)
               </small>
             )}
@@ -167,11 +175,9 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
               <CalendarCheck size={14} /> Workout Adherence
             </span>
             <span
-              className={styles.pillarBadge}
-              style={{
-                background: adh?.adherence_pct && adh.adherence_pct >= 85 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(217, 119, 6, 0.15)',
-                color: adh?.adherence_pct && adh.adherence_pct >= 85 ? '#059669' : '#D97706',
-              }}
+              className={`${styles.pillarBadge} ${
+                adh?.adherence_pct && adh.adherence_pct >= 85 ? styles.badgeEmerald : styles.badgeAmber
+              }`}
             >
               {adh?.adherence_pct ?? 100}%
             </span>
@@ -183,10 +189,11 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
 
           <div className={styles.progressBarTrack}>
             <div
-              className={styles.progressBarFill}
+              className={`${styles.progressBarFill} ${
+                adh?.adherence_pct && adh.adherence_pct >= 85 ? styles.barEmerald : styles.barAmber
+              }`}
               style={{
                 width: `${Math.min(100, adh?.adherence_pct ?? 100)}%`,
-                background: adh?.adherence_pct && adh.adherence_pct >= 85 ? 'var(--color-primary)' : 'var(--color-amber)',
               }}
             />
           </div>
@@ -203,11 +210,9 @@ export const RightPathCard: React.FC<RightPathCardProps> = ({
               <Dumbbell size={14} /> Strength Index
             </span>
             <span
-              className={styles.pillarBadge}
-              style={{
-                background: str?.status === 'PROGRESSING' || str?.status === 'MAINTAINED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                color: str?.status === 'PROGRESSING' || str?.status === 'MAINTAINED' ? '#059669' : 'var(--text-secondary)',
-              }}
+              className={`${styles.pillarBadge} ${
+                str?.status === 'PROGRESSING' || str?.status === 'MAINTAINED' ? styles.badgeEmerald : styles.badgeSlate
+              }`}
             >
               {str?.status?.replace('_', ' ') || 'Stable'}
             </span>

@@ -183,95 +183,378 @@
   color: var(--text-muted);
 }
 
-/* Diet blueprint */
-.blueprintHeader {
+/* Meal item actions & delete */
+.mealItemActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deleteMealBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.deleteMealBtn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.mealCardHeaderRight {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
-.blueprintTitle {
-  font-size: 1.35rem;
+.emptyWithYesterday {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.blueprintIntro {
+.mealEmptyText {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.yesterdayPreviewBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px dashed rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.yesterdayPreviewText {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
   color: var(--text-secondary);
-  font-size: 0.88rem;
-  margin-top: -0.5rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
-.blueprintCard {
-  margin-bottom: 1rem;
+.yesterdayBadge {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
 }
 
-.blueprintCardHeader {
+.yesterdayKcal {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Redesigned Log Food Modal */
+.modalMealTypeTabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: var(--bg-surface-elevated);
+  padding: 4px;
+  border-radius: var(--radius-md);
+}
+
+.modalMealTypeTab {
+  padding: 8px 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modalMealTypeTab:hover {
+  color: var(--text-primary);
+}
+
+.modalMealTypeTabActive {
+  background: var(--color-primary);
+  color: #052b20;
+  font-weight: 700;
+}
+
+.modalYesterdayBanner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-md);
 }
 
-.blueprintCardTitle {
-  font-size: 1.05rem;
-}
-
-.tableWrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.th {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: left;
-  padding: 0.5rem 0.5rem;
-}
-
-.td {
-  padding: 0.55rem 0.5rem;
-  font-size: 0.82rem;
-  border-top: 1px solid var(--border-subtle);
-  vertical-align: top;
-}
-
-.tdStrong {
+.modalYesterdayTitle {
+  font-size: 0.88rem;
   font-weight: 700;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.tdMuted {
+.modalYesterdaySubtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.tabSwitch {
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 16px;
+  margin-top: 0.25rem;
+}
+
+.tabSwitchBtn {
+  background: none;
+  border: none;
+  padding: 8px 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.tabSwitchBtn:hover {
   color: var(--text-secondary);
 }
 
-.tdTotal {
-  font-weight: 800;
-}
-
-.tdTotalPrimary {
+.tabSwitchBtnActive {
   color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
-.tdTotalCyan {
-  color: var(--color-cyan);
+.recentFoodsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.tdProtein {
-  color: var(--color-primary);
+.sectionHeading {
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.sectionTitle {
-  font-size: 1.15rem;
-  margin-bottom: 0.75rem;
+.recentFoodsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.recentFoodCard {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.recentFoodCard:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.recentFoodCardSelected {
+  border-color: var(--color-primary);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.recentFoodName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.recentFoodPortion {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.recentFoodMacros {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-top: 2px;
+}
+
+.staplesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stapleChip {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.stapleChip:hover {
+  border-color: var(--color-primary);
+  color: var(--text-primary);
+}
+
+/* Selected Food Box with Quantity / Servings Controls */
+.selectedFoodBox {
+  background: var(--bg-surface-elevated);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.selectedFoodTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.quantityControl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quantityStepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepperBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.stepperBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.stepperInput {
+  width: 80px;
+  text-align: center;
+  padding: 7px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: Outfit, sans-serif;
+  outline: none;
+}
+
+.quantityChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quantityChip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quantityChip:hover {
+  border-color: var(--color-primary);
+  color: var(--text-primary);
+}
+
+.quantityChipActive {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.macroSummaryPill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.manualNotice {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 .protocolTitle {
@@ -338,4 +621,149 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 1rem;
+}
+
+/* Target derivation card */
+.targetCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.targetHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.targetHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.targetTitle {
+  font-size: 1.15rem;
+}
+
+.targetSteps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.targetStep {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-md);
+}
+
+.targetStepResult {
+  background: var(--chip-emerald-soft);
+}
+
+.targetStepLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.targetStepValue {
+  font-size: 1.25rem;
+  font-family: Outfit, sans-serif;
+  color: var(--text-primary);
+}
+
+.targetStepResult .targetStepValue {
+  color: var(--color-primary);
+}
+
+.targetStepSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.targetHint {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.targetLink {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Log food modal: picker */
+.mealItemServings {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.entryToggle {
+  display: flex;
+  gap: 8px;
+}
+
+.foodResults {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.foodResult {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--bg-surface-elevated);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.foodResult:hover {
+  border-color: var(--border-glow);
+}
+
+.foodResultName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.foodResultMeta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.selectedFood {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-md);
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
